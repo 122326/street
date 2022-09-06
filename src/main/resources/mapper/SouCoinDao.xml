@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.SouCoinDao">
+    <update id="changeSouCoin">
+        UPDATE tb_person_info
+        SET sou_coin=sou_coin + #{souCoin}
+        WHERE user_id = #{userID}
+    </update>
+
+    <insert id="addSouCoinLog">
+        INSERT INTO tb_soucoin_log(user_id, value, method, bank_name, card_number, time)
+        VALUES (#{userID}, #{souCoin}, #{method}, #{bankName}, #{cardNumber}, CURRENT_TIMESTAMP);
+    </insert>
+
+    <select id="listLogs" resultMap="souCoinLogMap">
+        SELECT tb_person_info.user_id, user_name, value, bank_name, method, card_number, time
+        FROM tb_soucoin_log
+        JOIN tb_person_info
+        ON tb_person_info.user_id = tb_soucoin_log.user_id
+        <where>
+            <if test="userID != null">
+                tb_soucoin_log.user_id = #{userID}
+            </if>
+            <if test="startTime != null">
+                AND time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND time &lt;= #{endTime}
+            </if>
+        </where>
+        <if test="sort != null and order != null">
+            ORDER BY ${sort} ${order}
+        </if>
+        <if test="sort == null and order == null">
+            ORDER BY time desc
+        </if>
+        LIMIT #{rowsIndex}, #{pageSize}
+    </select>
+
+    <select id="getSummary" resultType="java.lang.Long">
+        SELECT SUM(value)
+        FROM tb_soucoin_log
+        JOIN tb_person_info
+        ON tb_person_info.user_id = tb_soucoin_log.user_id
+        WHERE value > 0
+        <if test="userID != null">
+            AND tb_soucoin_log.user_id = #{userID}
+        </if>
+        <if test="startTime != null">
+            AND time >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND time &lt;= #{endTime}
+        </if>
+        UNION ALL
+        SELECT SUM(value)
+        FROM tb_soucoin_log
+        JOIN tb_person_info
+        ON tb_person_info.user_id = tb_soucoin_log.user_id
+        WHERE value &lt; 0
+        <if test="userID != null">
+            AND tb_soucoin_log.user_id = #{userID}
+        </if>
+        <if test="userName != null">
+            AND user_name LIKE CONCAT('%',#{userName},'%')
+        </if>
+        <if test="startTime != null">
+            AND time >= #{startTime}
+        </if>
+        <if test="endTime != null">
+            AND time &lt;= #{endTime}
+        </if>
+    </select>
+
+    <resultMap id="souCoinLogMap" type="com.entity.Soucoin">
+        <id property="logId" column="log_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="bankName" column="bank_name"/>
+        <result property="cardNumber" column="card_number"/>
+    </resultMap>
+
+</mapper>

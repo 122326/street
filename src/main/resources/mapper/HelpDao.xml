@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.HelpDao">
+	<select id="queryHelpListFY" resultMap="helpMap">
+		SELECT
+		user_name,
+		help_id,
+		appeal_id,
+		tb_help.user_id,
+		appeal_title,
+		help_status,
+		completion,
+		efficiency,
+		attitude,
+		avg_completion,
+		avg_efficiency,
+		avg_attitude,
+		all_coin,
+		additional_coin,
+		end_time,
+		comment_info
+		FROM
+		tb_help
+		LEFT JOIN tb_person_info
+		ON tb_help.user_id=tb_person_info.user_id
+		<where>
+			<if test="helpCondition.appealId != null">
+				and appeal_id = #{helpCondition.appealId}
+			</if>
+			<if test="helpCondition.userId != null">
+				and tb_help.user_id = #{helpCondition.userId}
+			</if>
+			<if test="helpCondition.helpStatus != null">
+				and
+				help_status = #{helpCondition.helpStatus}
+			</if>
+			<if test="startTime != null and endTime != null">
+				and (end_time &gt;= #{startTime} and end_time &lt;=
+				#{endTime})
+			</if>
+			<if test="helpCondition.additionalCoin != null">
+				and additional_coin = #{helpCondition.additionalCoin}
+			</if>
+			<if test="helpCondition.allCoin != null">
+				and all_coin = #{helpCondition.allCoin}
+			</if>
+			<if test="helpCondition.helpId != null">
+				and help_id = #{helpCondition.helpId}
+			</if>
+			<if
+					test="helpCondition.appealTitle != null">
+				and appeal_title like '%${helpCondition.appealTitle}%'
+			</if>
+			<if
+					test="helpCondition.commentInfo != null">
+				and comment_info like '%${helpCondition.commentInfo}%'
+			</if>
+		</where>
+		<if test="sort != null and order != null">
+			ORDER BY ${sort} ${order}
+		</if>
+		<if test="sort == null and order == null">
+			ORDER BY help_id desc
+		</if>
+		LIMIT #{rowIndex},#{pageSize};
+	</select>
+
+	<select id="queryHelpList" resultMap="helpMap">
+		SELECT
+		help_id,
+		appeal_id,
+		appeal_title,
+		help_status,
+		completion,
+		efficiency,
+		attitude,
+		avg_completion,
+		avg_efficiency,
+		avg_attitude,
+		all_coin,
+		additional_coin,
+		end_time,
+		comment_info
+		FROM
+		tb_help
+		<where>
+			<if test="helpCondition.appealId != null">
+				and appeal_id = #{helpCondition.appealId}
+			</if>
+			<if test="helpCondition.userId != null">
+				and user_id = #{helpCondition.userId}
+			</if>
+			<if test="helpCondition.helpStatus != null">
+				and help_status = #{helpCondition.helpStatus}
+			</if>
+		</where>
+	</select>
+
+	<select id="queryByHelpId" resultMap="helpMap"
+		parameterType="long">
+		SELECT
+		help_id,
+		user_id,
+		appeal_id,
+		appeal_title,
+		help_status,
+		completion,
+		efficiency,
+		attitude,
+		avg_completion,
+		avg_efficiency,
+		avg_attitude,
+		all_coin,
+		additional_coin,
+		end_time,
+		comment_info
+		FROM
+		tb_help
+		WHERE
+		help_id=#{helpId}
+	</select>
+	<insert id="insertHelp" parameterType="com.entity.Help"
+		useGeneratedKeys="true" keyProperty="helpId" keyColumn="help_id">
+		INSERT
+		INTO
+		tb_help(
+		appeal_id,
+		appeal_title,
+		user_id,
+		help_status,
+		completion,
+		efficiency,
+		attitude,
+		avg_completion,
+		avg_efficiency,
+		avg_attitude,
+		all_coin,
+		additional_coin,
+		end_time,
+		comment_info)
+		VALUES
+		(#{appealId},#{appealTitle},#{userId},#{helpStatus},#{completion},
+		#{efficiency},#{attitude},#{avgCompletion},#{avgEfficiency},#{avgAttitude},#{allCoin},#{additionalCoin},#{endTime},#{commentInfo})
+	</insert>
+
+	<update id="updateHelp" parameterType="com.entity.Help">
+		update tb_help
+		<set>
+			<if test="helpStatus != null">help_status=#{helpStatus},</if>
+			<if test="completion != null">completion=#{completion},</if>
+			<if test="efficiency != null">efficiency=#{efficiency},</if>
+			<if test="attitude != null">attitude=#{attitude},</if>
+			<if test="allCoin != null">all_coin=#{allCoin},</if>
+			<if test="additionalCoin != null">additional_coin=#{additionalCoin},</if>
+			comment_info=#{commentInfo}
+		</set>
+		where help_id=#{helpId}
+	</update>
+
+	<resultMap id="helpMap" type="com.entity.Help">
+		<id property="helpId" column="help_id"/>
+		<result property="appealId" column="appeal_id"/>
+		<result property="appealTitle" column="appeal_title"/>
+		<result property="userId" column="user_id"/>
+		<result property="helpStatus" column="help_status"/>
+		<result property="avgCompletion" column="avg_completion"/>
+		<result property="avgEfficiency" column="avg_efficiency"/>
+		<result property="avgAttitude" column="avg_attitude"/>
+		<result property="allCoin" column="all_coin"/>
+		<result property="additionalCoin" column="additional_coin"/>
+		<result property="endTime" column="end_time"/>
+		<result property="commentInfo" column="comment_info"/>
+	</resultMap>
+</mapper>

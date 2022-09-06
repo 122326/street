@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE mapper
+				PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+				"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.ServiceDao">
+<select id="queryServiceList" resultMap="serviceMap">
+	SELECT
+	shop_name,service_id,tb_service.shop_id,service_name,service_price,service_priority,service_desc,service_content,service_img_addr
+	FROM
+	tb_service
+	LEFT JOIN tb_shop
+	ON tb_service.shop_id=tb_shop.shop_id
+	<where>
+		<if test="serviceCondition.serviceContent != null">
+			and service_content like '%${serviceCondition.serviceContent}%'
+		</if>
+		<if test="serviceCondition.serviceName != null">
+			and service_name like '%${serviceCondition.serviceName}%'
+		</if>
+		<if test="serviceCondition.serviceDesc != null">
+			and service_desc like '%${serviceCondition.serviceDesc}%'
+		</if>
+		<if
+				test="serviceCondition.shopId != null">
+			and tb_shop.shop_id = #{serviceCondition.shopId}
+		</if>
+		<if
+				test="serviceCondition.serviceId != null">
+			and service_id = #{serviceCondition.serviceId}
+		</if>
+		<if
+				test="serviceCondition.servicePrice != null">
+			and service_price = #{serviceCondition.servicePrice}
+		</if>
+	</where>
+	<if test="sort != null and order != null">
+		ORDER BY ${sort} ${order}
+	</if>
+	<if test="sort == null and order == null">
+		ORDER BY service_id desc
+	</if>
+	LIMIT #{rowIndex},#{pageSize};
+</select>
+
+<select id="queryServiceList2" resultMap="serviceMap">
+	SELECT
+	service_id,shop_id,service_name,service_price,service_priority,service_desc,service_content,service_img_addr
+	FROM
+	tb_service
+	<where>
+		<if test="serviceCondition.serviceContent != null">
+			and service_content like '%${serviceCondition.serviceContent}%'
+		</if>
+		<if test="serviceCondition.serviceName != null">
+			and service_name like '%${serviceCondition.serviceName}%'
+		</if>
+		<if
+				test="serviceCondition.shopId != null">
+			and shop_id = #{serviceCondition.shopId}
+		</if>
+		<if
+				test="serviceCondition.servicePrice != null">
+			and service_price = #{serviceCondition.servicePrice}
+		</if>
+	</where>
+	ORDER BY service_priority desc
+</select>
+
+<insert id="insertService" parameterType="com.entity.ServiceInfo"
+		useGeneratedKeys="true" keyProperty="serviceId" keyColumn="service_id">
+	INSERT
+	INTO
+	tb_service(shop_id,service_name,service_price,service_priority,
+	service_desc,service_content,service_img_addr)
+	VALUES
+	(#{shopId},#{serviceName},#{servicePrice},#{servicePriority},
+	#{serviceDesc},#{serviceContent},#{serviceImgAddr})
+</insert>
+
+
+<update id="updateService" parameterType="com.entity.ServiceInfo">
+	update tb_service
+	<set>
+		<if test="shopId != null">shop_id=#{shopId},</if>
+		<if test="serviceName != null">service_name=#{serviceName},</if>
+		<if test="servicePrice != null">service_price=#{servicePrice},</if>
+		<if test="servicePriority != null">service_priority=#{servicePriority},</if>
+		<if test="serviceDesc != null">service_desc=#{serviceDesc},</if>
+		<if test="serviceContent!=null">service_content=#{serviceContent},</if>
+		<if test="serviceImgAddr!=null">service_img_addr=#{serviceImgAddr}</if>
+	</set>
+	where service_id=#{serviceId}
+</update>
+<delete id="deleteService">
+	delete from tb_service where service_id=#{serviceId}
+</delete>
+<select id="queryByServiceId" resultMap="serviceMap" parameterType="Long">
+	SELECT
+	service_id,shop_id,service_name,service_price,service_priority,service_desc,service_content,service_img_addr
+	FROM
+	tb_service
+	WHERE
+	service_id=#{serviceId}
+</select>
+
+<resultMap id="serviceMap" type="com.entity.ServiceInfo">
+	<id property="serviceId" column="service_id"/>
+	<result property="shopId" column="shop_id"/>
+	<result property="serviceName" column="service_name"/>
+	<result property="servicePrice" column="service_price"/>
+	<result property="servicePriority" column="service_priority"/>
+	<result property="serviceDesc" column="service_desc"/>
+	<result property="serviceContent" column="service_content"/>
+	<result property="serviceImgAddr" column="service_img_addr"/>
+</resultMap>
+
+</mapper>

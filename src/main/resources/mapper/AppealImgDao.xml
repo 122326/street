@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.AppealImgDao">
+
+	<!--获取求助图片-->
+	<select id="getAppealImg"
+		resultMap="appealImgMap">
+		SELECT
+		appeal_img_id,
+		img_addr,
+		create_time,
+		appeal_id
+		FROM
+		tb_appeal_img
+		WHERE appeal_img_id=#{appealImgId}
+	</select>
+
+	<!--根据求助id获取求助图片-->
+	<select id="getAppealImgList"
+			resultMap="appealImgMap">
+		SELECT
+			appeal_img_id,
+			img_addr,
+			create_time,
+			appeal_id
+		FROM
+			tb_appeal_img
+		WHERE appeal_id=#{appealId}
+	</select>
+
+	<!--分页查询求助图片-->
+	<select id="queryAppealImgList"
+		resultMap="appealImgMap">
+		SELECT
+		appeal_img_id,
+		img_addr,
+		create_time,
+		appeal_id
+		FROM
+		tb_appeal_img
+		<where>
+			<if test="appealImgCondition.appealId != null">
+				and appeal_id = #{appealImgCondition.appealId}
+			</if>
+		</where>
+		<if test="sort != null and order != null">
+			ORDER BY ${sort} ${order}
+		</if>
+		<if test="sort == null and order == null">
+			ORDER BY create_time desc
+		</if>
+		LIMIT #{rowIndex},#{pageSize};
+	</select>
+
+	<!--添加求助详情图片-->
+	<insert id="insertAppealImg"
+		parameterType="com.entity.AppealImg"
+		useGeneratedKeys="true" keyProperty="appealImgId"
+		keyColumn="appeal_img_id">
+		INSERT INTO
+		tb_appeal_img(img_addr,create_time,appeal_id)
+		VALUES
+		(#{imgAddr},#{createTime},#{appealId})
+	</insert>
+
+	<!--删除指定求助图片-->
+	<delete id="deleteAppealImgById">
+		DELETE FROM
+		tb_appeal_img
+		WHERE
+		appeal_img_id =
+		#{appealImgId}
+	</delete>
+
+	<resultMap id="appealImgMap" type="com.entity.AppealImg">
+		<id property="appealImgId" column="appeal_img_id"/>
+		<result property="imgAddr" column="img_addr"/>
+		<result property="appealId" column="appeal_id"/>
+		<result property="createTime" column="create_time"/>
+	</resultMap>
+
+</mapper>

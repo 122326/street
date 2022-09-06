@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.AppealDao">
+
+	<!--根据经纬度范围查找求助-->
+	<select id="queryNearbyAppealList"
+		resultMap="appealMap">
+		SELECT
+		appeal_id,user_id,user_name,appeal_title,phone,appeal_content,province,city,district,
+		full_address,appeal_more_info,sou_coin,latitude,longitude,
+		appeal_status,start_time,end_time
+		FROM
+		tb_appeal
+		<where>
+			appeal_status = 0
+			<!--可设置查询条件，条件可包含帮助名称，帮助经纬度-->
+			<if test="appealTitle != null">
+				and appeal_title like '%${appealTitle}%'
+			</if>
+			<if test="maxlat != null">
+				and latitude &lt;= #{maxlat}
+			</if>
+			<if test="minlat != null">
+				and latitude &gt;= #{minlat}
+			</if>
+			<if test="maxlng != null">
+				and longitude &lt;= #{maxlng}
+			</if>
+			<if test="minlng != null">
+				and longitude &gt;= #{minlng}
+			</if>
+		</where>
+		ORDER BY start_time desc;
+	</select>
+
+	<!--分页查询求助,可输入的条件有：求助名（模糊），求助状态，省份，城市，地区，求助者的用户ID，指定日期范围（大于开始时间，小于失效时间），搜币（大于搜币）-->
+	<select id="queryAppealListFY"
+		resultMap="appealMap">
+		SELECT
+		tb_appeal.user_name,appeal_id,tb_appeal.user_id,appeal_title,tb_appeal.phone,appeal_content,province,city,district,
+		full_address,appeal_more_info,tb_appeal.sou_coin,latitude,longitude,
+		appeal_status,start_time,end_time
+		FROM
+		tb_appeal
+		LEFT JOIN tb_person_info
+		ON tb_appeal.user_id=tb_person_info.user_id
+		<where>
+			<if test="appealCondition.appealTitle != null">
+				and appeal_title like '%${appealCondition.appealTitle}%'
+			</if>
+			<if test="appealCondition.appealContent != null">
+				and appeal_content like '%${appealCondition.appealContent}%'
+			</if>
+			<if test="appealCondition.appealStatus != null">
+				and appeal_status = #{appealCondition.appealStatus}
+			</if>
+			<if test="appealCondition.province != null">
+				and province = #{appealCondition.province}
+			</if>
+			<if test="appealCondition.phone != null">
+				and tb_appeal.phone = #{appealCondition.phone}
+			</if>
+			<if test="appealCondition.city != null">
+				and city = #{appealCondition.city}
+			</if>
+			<if test="appealCondition.district != null">
+				and district = #{appealCondition.district}
+			</if>
+			<if test="appealCondition.userId != null">
+				and tb_appeal.user_id = #{appealCondition.userId}
+			</if>
+			<if test="appealCondition.appealId != null">
+				and appeal_id = #{appealCondition.appealId}
+			</if>
+			<if test="appealCondition.startTime != null">
+				and start_time &gt;= #{appealCondition.startTime}
+			</if>
+			<if test="appealCondition.endTime != null">
+				and end_time &lt;= #{appealCondition.endTime}
+			</if>
+			<if test="appealCondition.souCoin != null">
+				and tb_appeal.sou_coin &gt;= #{appealCondition.souCoin}
+			</if>
+
+		</where>
+		<if test="sort != null and order != null">
+			ORDER BY ${sort} ${order}
+		</if>
+		<if test="sort == null and order == null">
+			ORDER BY start_time desc
+		</if>
+		LIMIT #{rowIndex},#{pageSize};
+	</select>
+
+	<!--查询求助，可输入的条件有：求助名（模糊），求助状态，省份，城市，地区，求助者的用户ID-->
+	<select id="queryAppealList" resultMap="appealMap">
+		SELECT
+		appeal_id,appeal_title,phone,appeal_content,province,city,district,
+		full_address,appeal_more_info,sou_coin,latitude,longitude,
+		appeal_status,start_time,end_time
+		FROM
+		tb_appeal
+		<where>
+			<if test="appealCondition.appealTitle != null">
+				and appeal_title like '%${appealCondition.appealTitle}%'
+			</if>
+			<if test="appealCondition.appealStatus != null">
+				and appeal_status = #{appealCondition.appealStatus}
+			</if>
+			<if test="appealCondition.province != null">
+				and province = #{appealCondition.province}
+			</if>
+			<if test="appealCondition.city != null">
+				and city = #{appealCondition.city}
+			</if>
+			<if test="appealCondition.district != null">
+				and district = #{appealCondition.district}
+			</if>
+			<if test="appealCondition.userId != null">
+				and user_id = #{appealCondition.userId}
+			</if>
+		</where>
+		ORDER BY start_time desc;
+	</select>
+
+	<!--添加求助-->
+	<insert id="insertAppeal"
+		parameterType="com.entity.Appeal"
+		useGeneratedKeys="true" keyProperty="appealId" keyColumn="appeal_id">
+		INSERT
+		INTO
+		tb_appeal(user_id,user_name,appeal_title,phone,appeal_content,province,city,district,
+		full_address,appeal_more_info,sou_coin,latitude,longitude,
+		appeal_status,start_time,end_time)
+		VALUES
+		(#{userId},#{userName},#{appealTitle},#{phone},#{appealContent},#{province},#{city},
+		#{district},#{fullAddress},#{appealMoreInfo},#{souCoin},#{latitude},
+		#{longitude},#{appealStatus},#{startTime},#{endTime})
+	</insert>
+
+	<!--更新求助信息-->
+	<update id="updateAppeal"
+		parameterType="com.entity.Appeal">
+		update tb_appeal
+		<set>
+			<if test="appealTitle != null">appeal_title=#{appealTitle},</if>
+			<if test="phone != null">phone=#{phone},</if>
+			<if test="appealContent != null">appeal_content=#{appealContent},</if>
+			<if test="province!=null">province=#{province},</if>
+			<if test="city != null">city=#{city},</if>
+			<if test="district != null">district=#{district},</if>
+			<if test="fullAddress != null">full_address=#{fullAddress},</if>
+			<if test="appealMoreInfo != null">appeal_more_info=#{appealMoreInfo},</if>
+			<if test="souCoin != null">sou_coin=#{souCoin},</if>
+			<if test="latitude != null">latitude=#{latitude},</if>
+			<if test="longitude != null">longitude=#{longitude},</if>
+			<if test="appealStatus != null">appeal_status=#{appealStatus},</if>
+			<if test="startTime != null">start_time=#{startTime},</if>
+			<if test="endTime != null">end_time=#{endTime}</if>
+		</set>
+		where appeal_id=#{appealId}
+	</update>
+
+	<!--通过appeal id查询求助-->
+	<select id="queryByAppealId"
+		resultMap="appealMap" parameterType="Long">
+		SELECT
+		appeal_id,user_id,appeal_title,phone,appeal_content,province,city,district,
+		full_address,appeal_more_info,sou_coin,latitude,longitude,
+		appeal_status,start_time,end_time
+		FROM
+		tb_appeal
+		WHERE
+		appeal_id=#{appealId}
+	</select>
+
+	<resultMap id="appealMap" type="com.entity.Appeal">
+		<id property="appealId" column="appeal_id"/>
+		<result property="userId" column="user_id"/>
+		<result property="userName" column="user_name"/>
+		<result property="appealTitle" column="appeal_title"/>
+		<result property="appealContent" column="appeal_content"/>
+		<result property="fullAddress" column="full_address"/>
+		<result property="appealMoreInfo" column="appeal_more_info"/>
+		<result property="souCoin" column="sou_coin"/>
+		<result property="appealStatus" column="appeal_status"/>
+		<result property="startTime" column="start_time"/>
+		<result property="endTime" column="end_time"/>
+	</resultMap>
+
+</mapper>

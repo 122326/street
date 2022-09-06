@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.ServiceImgDao">
+<select id="queryServiceImg" resultMap="serviceImgMap">
+		SELECT
+		service_img_id,img_addr,create_time,service_id
+		FROM
+		tb_service_img
+		<where>
+			<if
+				test="serviceImgCondition.serviceId != null">
+				and service_id = #{serviceImgCondition.serviceId}
+			</if> 
+		</where>
+	<if test="sort != null and order != null">
+		ORDER BY ${sort} ${order}
+	</if>
+	<if test="sort == null and order == null">
+		ORDER BY create_time desc
+	</if>
+		LIMIT #{rowIndex},#{pageSize};
+	</select>
+
+	<select id="getServiceImgList"
+			resultMap="serviceImgMap">
+		SELECT
+			service_img_id,
+			img_addr,
+			create_time,
+			service_id
+		FROM
+			tb_service_img
+		WHERE service_id=#{serviceId}
+	</select>
+	<insert id="insertServiceImg" parameterType="com.entity.ServiceImg"
+		useGeneratedKeys="true" keyProperty="serviceImgId" keyColumn="service_img_id">
+		INSERT
+		INTO
+		tb_service_img(img_addr,create_time,service_id)
+		VALUES
+		(#{imgAddr},#{createTime},#{serviceId})
+	</insert>
+
+	<delete id="deleteServiceImg">
+		DELETE FROM
+		tb_service_img
+		WHERE
+		service_img_id=#{serviceImgId}
+	</delete>
+
+	<delete id="deleteImgByServiceId">
+		DELETE FROM
+			tb_service_img
+		WHERE
+			service_id=#{serviceId}
+	</delete>
+
+	<resultMap id="serviceImgMap" type="com.entity.ServiceImg">
+		<id property="serviceImgId" column="service_img_id"/>
+		<result property="imgAddr" column="img_addr"/>
+		<result property="serviceId" column="service_id"/>
+		<result property="createTime" column="create_time"/>
+	</resultMap>
+</mapper>

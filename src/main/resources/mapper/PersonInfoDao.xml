@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.PersonInfoDao">
+	<select id="queryPersonInfoList"
+		resultMap="personInfoMap">
+		SELECT
+		user_id,
+		user_name,
+		profile_img,
+		sex,
+		birth,
+		phone,
+		sou_coin,
+		user_type,
+		email,
+		real_name,
+		identification_number,
+		create_time,
+		last_edit_time,
+		enable_status
+		FROM
+		tb_person_info
+		<where>
+			<if
+				test="personInfoCondition != null and personInfoCondition.userName != null">
+				and user_name like '%${personInfoCondition.userName}%'
+			</if>
+			<if
+				test="personInfoCondition != null and personInfoCondition.enableStatus != null">
+				and enable_status = #{personInfoCondition.enableStatus}
+			</if>
+			<if
+					test="personInfoCondition.userId != null">
+				and user_id = #{personInfoCondition.userId}
+			</if>
+			<if
+					test="personInfoCondition.phone != null">
+				and phone = #{personInfoCondition.phone}
+			</if>
+			<if
+					test="personInfoCondition.email != null">
+				and email = #{personInfoCondition.email}
+			</if>
+		</where>
+		<if test="sort != null and order != null">
+			ORDER BY ${sort} ${order}
+		</if>
+		<if test="sort == null and order == null">
+			ORDER BY create_time desc
+		</if>
+		LIMIT #{rowIndex},#{pageSize};
+	</select>
+	<select id="queryPersonInfoByUserId"
+		resultMap="personInfoMap" parameterType="long">
+		SELECT
+		user_id,
+		password,
+		user_name,
+		profile_img,
+		sex,
+		birth,
+		phone,
+		sou_coin,
+		user_type,
+		email,
+		create_time,
+		last_edit_time,
+		enable_status
+		FROM
+		tb_person_info
+		WHERE
+		user_id = #{userId}
+	</select>
+
+	<select id="queryPersonInfoByPhone"
+			resultMap="personInfoMap" parameterType="String">
+		SELECT
+		user_id,
+		password,
+		user_name,
+		profile_img,
+		sex,
+		birth,
+		phone,
+		sou_coin,
+		user_type,
+		email,
+		create_time,
+		last_edit_time,
+		enable_status
+		FROM
+		tb_person_info
+		WHERE
+		phone = #{phone}
+	</select>
+
+	<insert id="insertPersonInfo"
+		parameterType="com.entity.PersonInfo"
+		useGeneratedKeys="true" keyProperty="userId" keyColumn="user_id">
+		INSERT
+		INTO
+		tb_person_info(
+		user_id,
+		user_name,
+		password,
+		profile_img,
+		sex,
+		birth,
+		phone,
+		sou_coin,
+		user_type,
+		email,
+		create_time,
+		last_edit_time,
+		enable_status)
+		VALUES
+		(#{userId},#{userName},#{password},#{profileImg},#{sex},#{birth},
+		#{phone},#{souCoin},#{userType},#{email},
+		#{createTime},#{lastEditTime},#{enableStatus})
+	</insert>
+	<update id="updatePersonInfo"
+		parameterType="com.entity.PersonInfo">
+		update tb_person_info
+		<set>
+			<if test="userName != null">user_name=#{userName},</if>
+			<if test="password != null">password=#{password},</if>
+			<if test="profileImg != null">profile_img=#{profileImg},</if>
+			<if test="sex != null">sex=#{sex},</if>
+			<if test="birth != null">birth=#{birth},</if>
+			<if test="phone != null">phone=#{phone},</if>
+			<if test="souCoin != null">sou_coin=#{souCoin},</if>
+			<if test="userType != null">user_type=#{userType},</if>
+			<if test="email != null">email=#{email},</if>
+			<if test="lastEditTime != null">last_edit_time=#{lastEditTime},</if>
+			<if test="enableStatus != null">enable_status=#{enableStatus},</if>
+			<if test="profileImg != null">profile_img=#{profileImg}</if>
+		</set>
+		where user_id=#{userId}
+	</update>
+
+	<resultMap id="personInfoMap" type="com.entity.PersonInfo">
+		<id property="userId"  column = "user_id"/>
+		<result property = "souCoin"  column = "sou_coin"/>
+		<result property = "userName" column = "user_name"/>
+		<result property = "createTime" column = "create_time"/>
+		<result property = "identificationNumber" column = "identification_number"/>
+		<result property = "lastEditTime" column = "last_edit_time"/>
+	</resultMap>
+</mapper>
