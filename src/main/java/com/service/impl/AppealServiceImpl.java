@@ -4,7 +4,7 @@ import com.dao.AppealDao;
 import com.dao.AppealImgDao;
 import com.dao.HelpDao;
 import com.dao.PersonInfoDao;
-import com.util.ImageHolder;
+import com.dto.ImageHolder;
 import com.entity.Appeal;
 import com.entity.AppealImg;
 import com.entity.Help;

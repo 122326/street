@@ -1,105 +1,164 @@
 package com.controller;
 
-import com.util.ImageHolder;
-import com.entity.Shop;
-import com.service.ShopService;
-import com.service.UsersInformService;
-import com.util.HttpServletRequestUtil;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
-import io.swagger.annotations.ApiOperation;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartHttpServletRequest;
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
-import org.springframework.web.multipart.commons.CommonsMultipartResolver;
-
-import javax.servlet.http.HttpServletRequest;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletRequest;
+
+import com.service.AuthOperationLogService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
+import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+
+import com.dto.ConstantForSuperAdmin;
+import com.dto.ImageHolder;
+import com.dto.ShopExecution;
+import com.entity.Shop;
+import com.enums.ShopStateEnum;
+import com.service.ShopService;
+import com.util.HttpServletRequestUtil;
+
+import static com.util.NameUtil.HumpToUnderline;
+import static com.util.SQLUtil.sqlValidate;
 
 @Controller
-@RequestMapping("/shop")
+@RequestMapping("/superadmin")
 public class ShopController {
 	@Autowired
 	private ShopService shopService;
-	private UsersInformService usersInformService;
+	@Autowired
+	private AuthOperationLogService authOperationLogService;
 
 
 	/**
-	 * 店铺模糊查询
+	 * 获取店铺列表
+	 *
+	 * @param request
+	 * @return
 	 */
-	@RequestMapping("/getshoplistbylikename")
+	@RequestMapping(value = "/listshops", method = RequestMethod.POST)
 	@ResponseBody
-	@ApiImplicitParams({@ApiImplicitParam(paramType = "query", name ="key", value = "关键字", required = true, dataType = "String"),
-						@ApiImplicitParam(paramType = "query", name = "pageIndex", value = "页码", required = true, dataType = "int"),
-						@ApiImplicitParam(paramType = "query", name = "pageSize", value = "页面大小", required = true, dataType = "int")})
-	public Map<String, Object> getShop(HttpServletRequest request)
-	{
-		Map<String,Object> modelMap = new HashMap<String, Object>();
-		String key = HttpServletRequestUtil.getString(request,"key");
-		int pageIndex = HttpServletRequestUtil.getInt(request, "pageIndex");
-		int pageSize = HttpServletRequestUtil.getInt(request, "pageSize");
-		try {
-			// 模糊查询已绑定商铺对象
-			Shop shopCondition=new Shop();
-			shopCondition.setShopName(key);
-			List<Shop> shops=new ArrayList<Shop>();
-			shops=shopService.getShopList(shopCondition,pageIndex,pageSize,null,null);
-			modelMap.put("sucess",true);
-			modelMap.put("shoplist",shops);
-			return modelMap;
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		modelMap.put("sucess",false);
-		return modelMap;
-	}
-
-
-
-	@RequestMapping(value = "/getshoplistbyuserid", method = RequestMethod.GET)
-	@ResponseBody
-	@ApiOperation(value = "根据用户ID获取其所有商铺信息（分页）")
-	@ApiImplicitParams({
-			@ApiImplicitParam(paramType = "query", name = "userId", value = "用户userId", required = true, dataType = "Long"),
-			@ApiImplicitParam(paramType = "query", name = "pageIndex", value = "页码", required = true, dataType = "int"),
-			@ApiImplicitParam(paramType = "query", name = "pageSize", value = "页面大小", required = true, dataType = "int"),
-			@ApiImplicitParam(paramType = "query", name = "sort", value = "按照什么来排序", required = true, dataType = "String", example = "time"),
-			@ApiImplicitParam(paramType = "query", name = "order", value = "排序方式", required = true, dataType = "String", example = "DESC")})
-	private Map<String, Object> getShopListByUserId(HttpServletRequest request) {
+	private Map<String, Object> listShops(HttpServletRequest request) {
 		Map<String, Object> modelMap = new HashMap<String, Object>();
-		int pageIndex = HttpServletRequestUtil.getInt(request, "pageIndex");
-		int pageSize = HttpServletRequestUtil.getInt(request, "pageSize");
-		String sort = HttpServletRequestUtil.getString(request, "sort");
-		String order = HttpServletRequestUtil.getString(request, "order");
-		long userId = HttpServletRequestUtil.getLong(request, "userId");
-		try {
+		ShopExecution se = null;
+		// 获取分页信息
+		int pageIndex = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_NO);
+		int pageSize = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_SIZE);
+		// 空值判断
+		if (pageIndex > 0 && pageSize > 0) {
 			Shop shopCondition = new Shop();
-			shopCondition.setUserId(userId);
-			List<Shop> se = shopService.getShopList(shopCondition, pageIndex, pageSize,sort,order);
-			int pageNum = (int) (se.size() / pageSize);
-			if (pageNum * pageSize < se.size())
-				pageNum++;
-			modelMap.put("shopList", se);
-			modelMap.put("success", true);
-		} catch (Exception e) {
+			int enableStatus = HttpServletRequestUtil.getInt(request, "enableStatus");
+			if (enableStatus >= 0) {
+				// 若传入可用状态，则将可用状态添加到查询条件里
+				shopCondition.setEnableStatus(enableStatus);
+			}
+			String shopName = HttpServletRequestUtil.getString(request, "shopName");
+			if (shopName != null) {
+				try {
+					// 若传入店铺名称，则将店铺名称解码后添加到查询条件里，进行模糊查询
+					shopCondition.setShopName(URLDecoder.decode(shopName, "UTF-8"));
+				} catch (UnsupportedEncodingException e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+				}
+			}
+			Long shopId = HttpServletRequestUtil.getLong(request, "shopId");
+			if (shopId != null) {
+				try {
+					// 若传入店铺Id，则将店铺id添加到查询条件里
+					shopCondition.setShopId(shopId);
+				} catch (Exception e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+				}
+			}
+
+			String businessLicenseCode = HttpServletRequestUtil.getString(request, "businessLicenseCode");
+			if (businessLicenseCode != null) {
+				try {
+					// 若传入店铺Id，则将店铺id添加到查询条件里
+					shopCondition.setBusinessLicenseCode(businessLicenseCode);
+				} catch (Exception e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+				}
+			}
+
+			String phone = HttpServletRequestUtil.getString(request, "phone");
+			if (phone != null) {
+				try {
+					// 若传入店铺Id，则将店铺id添加到查询条件里
+					shopCondition.setPhone(phone);
+				} catch (Exception e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+				}
+			}
+
+			String fullAddress = HttpServletRequestUtil.getString(request, "fullAddress");
+			if (fullAddress != null) {
+				try {
+					// 若传入店铺Id，则将店铺id添加到查询条件里
+					shopCondition.setFullAddress(fullAddress);
+				} catch (Exception e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+				}
+			}
+			try {
+				String sort = HttpServletRequestUtil.getString(request, "sort");
+				if(sort!=null) sort = HumpToUnderline(sort);
+				String order = HttpServletRequestUtil.getString(request, "order");
+				//检测sort和order是否合法
+				if(sort!=null){
+					if (sqlValidate(sort)) {
+						modelMap.put("Warning:","您的行为已被记录，请勿再次操作，否则报警处理!");
+						return modelMap;
+					}}
+				if(order!=null){
+					if (sqlValidate(order)) {
+						modelMap.put("Warning:","您的行为已被记录，请勿再次操作，否则报警处理!");
+						return modelMap;
+					}}
+				// 根据查询条件分页返回店铺列表
+				se = shopService.getShopList(shopCondition, pageIndex, pageSize,sort,order);
+			} catch (Exception e) {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", e.toString());
+				return modelMap;
+			}
+			if (se.getShopList() != null) {
+				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, se.getShopList());
+				modelMap.put(ConstantForSuperAdmin.TOTAL, se.getCount());
+				modelMap.put("success", true);
+			} else {
+				// 取出数据为空，也返回new list以使得前端不出错
+				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<Shop>());
+				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
+				modelMap.put("success", true);
+			}
+			return modelMap;
+		} else {
 			modelMap.put("success", false);
-			modelMap.put("errMsg", e.toString());
+			modelMap.put("errMsg", "空的查询信息");
+			return modelMap;
 		}
-		return modelMap;
 	}
-
-
-
 
 	/**
-	 * 根据shopid返回店铺信息
-	 * 
+	 * 根据id返回店铺信息
+	 *
 	 * @param request
 	 * @return
 	 */
@@ -120,12 +179,14 @@ public class ShopController {
 				return modelMap;
 			}
 			if (shop != null) {
-				modelMap.put("rows", shop);
-				modelMap.put("total", 1);
+				List<Shop> shopList = new ArrayList<Shop>();
+				shopList.add(shop);
+				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, shopList);
+				modelMap.put(ConstantForSuperAdmin.TOTAL, 1);
 				modelMap.put("success", true);
 			} else {
-				modelMap.put("rows", shop);
-				modelMap.put("total", 0);
+				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<Shop>());
+				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
 				modelMap.put("success", true);
 			}
 			return modelMap;
@@ -136,94 +197,9 @@ public class ShopController {
 		}
 	}
 
-
-	/**
-	 * 根据位置返回店铺信息
-	 *
-	 * @param request
-	 * @return
-	 */
-	@RequestMapping(value = "/searchnearbyshops", method = RequestMethod.GET)
-	@ResponseBody
-	@ApiOperation(value = "返回2.5km内的所有商铺")
-	@ApiImplicitParams({
-			@ApiImplicitParam(paramType = "query", name = "longitude", value = "屏幕中心的经度", required = true, dataType = "Float"),
-			@ApiImplicitParam(paramType = "query", name = "latitude", value = "屏幕中心的纬度", required = true, dataType = "Float"),
-			@ApiImplicitParam(paramType = "query", name = "cover", value = "搜索范围", required = true, dataType = "Float"),
-			@ApiImplicitParam(paramType = "query", name = "shopName", value = "商铺名", required = false, dataType = "String"), })
-	private Map<String, Object> searchNearbyShops(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		float longitude = HttpServletRequestUtil.getFloat(request, "longitude");
-		float latitude = HttpServletRequestUtil.getFloat(request, "latitude");
-		float cover = HttpServletRequestUtil.getFloat(request, "cover");
-		if(cover<=0.0){cover=2.5f;}
-		String shopName = HttpServletRequestUtil.getString(request, "shopName");
-		float minlat = 0f;// 定义经纬度四个极限值
-		float maxlat = 0f;
-		float minlng = 0f;
-		float maxlng = 0f;
-
-		// 先计算查询点的经纬度范围
-		float r = 6371;// 地球半径千米
-		float dlng = (float) (2 * Math.asin(Math.sin(cover / (2 * r)) / Math.cos(latitude * Math.PI / 180)));
-		dlng = (float) (dlng * 180 / Math.PI);
-		float dlat = cover / r;
-		dlat = (float) (dlat * 180 / Math.PI);
-		if (dlng < 0) {
-			minlng = longitude + dlng;
-			maxlng = longitude - dlng;
-		} else {
-			minlng = longitude - dlng;
-			maxlng = longitude + dlng;
-		}
-		minlat = latitude - dlat;
-		maxlat = latitude + dlat;
-		try {
-			List<Shop> se = shopService.getNearbyShopList(maxlat, minlat, maxlng, minlng, shopName);
-			modelMap.put("shopList", se);
-			modelMap.put("minlng", minlng);
-			modelMap.put("maxlng", maxlng);
-			modelMap.put("minlat", minlat);
-			modelMap.put("maxlat", maxlat);
-			modelMap.put("success", true);
-		} catch (Exception e) {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", e.toString());
-		}
-		return modelMap;
-	}
-
-
-	/**
-	 *注册店铺
-	 *
-	 * @return
-	 */
-	@RequestMapping(value = "/registershop", method = RequestMethod.POST)
-	@ResponseBody
-	@ApiImplicitParam(paramType = "query", name = "userId", value = "用户userId", required = true, dataType = "Long")
-	private Map<String, Object> registerShop(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		String token = request.getHeader("token");
-		// 注册商铺
-		Long userId = HttpServletRequestUtil.getLong(request, "userId");
-		Shop shop=new Shop();
-		shop.setUserId(userId);
-		try {
-			shop = shopService.addShop(shop);
-			modelMap.put("success", true);
-			modelMap.put("shopId", shop.getShopId());
-		} catch (Exception e) {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", e.toString());
-		}
-		return modelMap;
-	}
-
-
 	/**
 	 * 修改店铺信息
-	 * 
+	 *
 	 *
 	 * @param request
 	 * @return
@@ -248,7 +224,7 @@ public class ShopController {
 		Float longitude = HttpServletRequestUtil.getFloat(request, "longitude");
 		int enableStatus = HttpServletRequestUtil.getInt(request, "enableStatus");
 		String businessScope = HttpServletRequestUtil.getString(request, "businessScope");
-		
+
 		Shop shop = new Shop();
 		shop.setShopId(shopId);
 		shop.setUserId(userId);
@@ -288,8 +264,19 @@ public class ShopController {
 					businessLicenseImgHolder = new ImageHolder(businessLicenseImg.getOriginalFilename(),
 							businessLicenseImg.getInputStream());
 				}
-				Shop se = shopService.modifyShop(shop, businessLicenseImgHolder, profileImgHolder);
-				modelMap.put("success", true);
+				ShopExecution se = shopService.modifyShop(shop, businessLicenseImgHolder, profileImgHolder);
+				if (se.getState() == ShopStateEnum.SUCCESS.getState()) {
+					modelMap.put("success", true);
+
+					//后台记录操作
+					User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+					String name = user.getUsername(); //get logged in username
+					authOperationLogService.addAuthOperationLog(name,"修改了店铺信息");
+
+				} else {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", se.getStateInfo());
+				}
 			} catch (Exception e) {
 				modelMap.put("success", false);
 				modelMap.put("errMsg", e.toString());
@@ -328,7 +315,7 @@ public class ShopController {
 		Float longitude = HttpServletRequestUtil.getFloat(request, "longitude");
 		int enableStatus = HttpServletRequestUtil.getInt(request, "enableStatus");
 		String businessScope = HttpServletRequestUtil.getString(request, "businessScope");
-		
+
 		Shop shop = new Shop();
 		shop.setUserId(userId);
 		shop.setShopName(shopName);
@@ -367,8 +354,13 @@ public class ShopController {
 				businessLicenseImgHolder = new ImageHolder(businessLicenseImg.getOriginalFilename(),
 						businessLicenseImg.getInputStream());
 			}
-			Shop se = shopService.addShop(shop, businessLicenseImgHolder, profileImgHolder);
-			modelMap.put("success", true);
+			ShopExecution se = shopService.addShop(shop, businessLicenseImgHolder, profileImgHolder);
+			if (se.getState() == ShopStateEnum.CHECK.getState()) {
+				modelMap.put("success", true);
+			} else {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", se.getStateInfo());
+			}
 		} catch (Exception e) {
 			modelMap.put("success", false);
 			modelMap.put("errMsg", e.toString());

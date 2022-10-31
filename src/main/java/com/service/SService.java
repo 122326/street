@@ -1,8 +1,10 @@
 package com.service;
 
-import com.util.ImageHolder;
+import com.dto.ImageHolder;
+import com.dto.ServiceExecution;
 import com.entity.ServiceImg;
 import com.entity.ServiceInfo;
+import com.exceptions.ServiceOperationException;
 
 import java.util.Date;
 import java.util.List;
@@ -10,52 +12,63 @@ import java.util.List;
 public interface SService {
 	/**
 	 * 根据serviceCondition分页返回相应服务列表
+	 *
+	 * @param serviceCondition
+	 * @param pageIndex
+	 * @param pageSize
+	 * @return
 	 */
-	List<ServiceInfo> getServiceList(ServiceInfo serviceCondition, int pageIndex, int pageSize, String sort, String order);
+	public ServiceExecution getServiceList(ServiceInfo serviceCondition, int pageIndex, int pageSize, String sort, String order);
 
-	/**
-	 * 通过商铺Id分页获取服务信息
-	 */
-	List<ServiceInfo> getByShopId(long shopId, int pageIndex, int pageSize);
-	List<ServiceInfo> getByShopId2(long shopId);
-
+	public ServiceExecution getByShopId(long shopId, int pageIndex, int pageSize);
+	public ServiceExecution getByShopId2(long shopId);
 	/**
 	 * 通过服务Id获取服务信息
+	 *
+	 * @param serviceId
+	 * @return
 	 */
-	ServiceInfo getByServiceId(long serviceId);
-
+	public ServiceInfo getByServiceId(long serviceId);
 	/**
 	 * 更新服务信息，不包括对图片的处理
 	 *
+	 * @param service
+	 *
+	 * @return
+	 * @throws ServiceOperationException
 	 */
-	ServiceInfo modifyService(ServiceInfo service) ;
-
-	List<ServiceImg> getServiceImgList(ServiceImg serviceImg, int pageIndex, int pageSize, String sort, String order);
-	List<ServiceImg> getServiceImg(long serviceId);
-
+	public ServiceExecution modifyService(ServiceInfo service) throws ServiceOperationException;
+	public ServiceExecution getServiceImgList(ServiceImg serviceImg,int pageIndex, int pageSize,String sort,String order);
+	public ServiceExecution getServiceImg(long serviceId);
 	/**
 	 * 上传服务图片
 	 *
+	 * @param serviceId
+	 * @param serviceImg
 	 *
+	 *
+	 * @return
+	 * @throws ServiceOperationException
 	 */
-	ServiceImg uploadImg(long serviceId, ImageHolder serviceImg, Date createTime);
-
-
+	public ServiceExecution uploadImg(long serviceId, ImageHolder serviceImg,Date createTime)
+			throws ServiceOperationException;
+	public ServiceExecution createServiceImg(Long serviceId, ImageHolder serviceImgHolder);
 	/**
 	 * 添加服务信息，不包括对图片的处理
 	 *
+	 * @param service
+	 * @return
+	 * @throws ServiceOperationException
 	 */
-	void addService(ServiceInfo service) ;
-
+	public ServiceExecution addService(ServiceInfo service) throws ServiceOperationException;
 	/**
-	 * 删除服务信息或照片信息
+	 * 删除服务信息
+	 *
+	 * @return
+	 * @throws ServiceOperationException
 	 */
-	void deleteService(long serviceId) ;
-	void deleteServiceImg(ServiceImg serviceImg) ;
-
-	/**
-	 * 添加服务信息
-	 */
-	ServiceImg addServiceImg(long serviceId, ImageHolder serviceImgHolder, Date createTime);
+	public ServiceExecution deleteService(long serviceId) throws ServiceOperationException;
+	public ServiceExecution deleteServiceImg(ServiceImg serviceImg) ;
+	public ServiceExecution addServiceImg(long serviceId, ImageHolder serviceImgHolder,Date createTime) throws ServiceOperationException;
 
 }

@@ -5,8 +5,10 @@ import com.alibaba.fastjson.annotation.JSONField;
 import com.auth0.jwt.internal.com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModelProperty;
 
+
 import java.util.Date;
 import java.util.List;
+
 
 public class Appeal {
 

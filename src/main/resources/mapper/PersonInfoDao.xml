@@ -52,6 +52,7 @@
 		</if>
 		LIMIT #{rowIndex},#{pageSize};
 	</select>
+
 	<select id="queryPersonInfoByUserId"
 		resultMap="personInfoMap" parameterType="long">
 		SELECT
@@ -94,6 +95,28 @@
 		tb_person_info
 		WHERE
 		phone = #{phone}
+	</select>
+
+	<select id="queryPersonInfoByUserName"
+			resultMap="personInfoMap" parameterType="String">
+		SELECT
+		user_id,
+		password,
+		user_name,
+		profile_img,
+		sex,
+		birth,
+		phone,
+		sou_coin,
+		user_type,
+		email,
+		create_time,
+		last_edit_time,
+		enable_status
+		FROM
+		tb_person_info
+		WHERE
+		userName = #{userName}
 	</select>
 
 	<insert id="insertPersonInfo"
@@ -144,6 +167,7 @@
 		<id property="userId"  column = "user_id"/>
 		<result property = "souCoin"  column = "sou_coin"/>
 		<result property = "userName" column = "user_name"/>
+		<result property = "phone" column = "phone" />
 		<result property = "createTime" column = "create_time"/>
 		<result property = "identificationNumber" column = "identification_number"/>
 		<result property = "lastEditTime" column = "last_edit_time"/>

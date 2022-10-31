@@ -1,45 +1,55 @@
 package com.dao;
 
 import com.entity.ServiceImg;
+import com.entity.ShopImg;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Date;
 import java.util.List;
 
 @Mapper
 public interface ServiceImgDao {
-	/*
-	* 根据查询条件分页返回服务图片
-	*
-	*/
-	List<ServiceImg> queryServiceImg(@Param("serviceImgCondition") ServiceImg serviceImgCondition, @Param("rowIndex") int rowIndex,
-                                            @Param("pageSize") int pageSize, @Param("sort") String sort, @Param("order") String order);
-
-
+	public List<ServiceImg> queryServiceImg(@Param("serviceImgCondition")ServiceImg serviceImgCondition, @Param("rowIndex") int rowIndex,
+											@Param("pageSize") int pageSize, @Param("sort") String sort, @Param("order") String order);
+	int queryServiceImgCount(@Param("serviceImgCondition") ServiceImg serviceImgCondition);
 	/**
-	 * 根据服务Id获取服务图片
+	 * 列出某个店铺的某服务图
 	 *
 	 * @param serviceId
 	 * @return
 	 */
-	List<ServiceImg> getServiceImgList(long serviceId);
-
+	public ServiceImg getServiceImg(long serviceId);
+	/**
+	 * 列出某个店铺的服务图列表
+	 *
+	 * @param serviceId
+	 * @return
+	 */
+	public List<ServiceImg> getServiceImgList(long serviceId);
 	/**
 	 * 添加服务图片
-	 * 
+	 *
 	 * @param serviceImg
 	 * @return
 	 */
-	void insertServiceImg(ServiceImg serviceImg);
+	public int insertServiceImg(ServiceImg serviceImg);
 
+	/**
+	 * 更改服务图片
+	 *
+	 * @param serviceImg
+	 * @return
+	 */
+	public int updateServiceImg(ServiceImg serviceImg);
 
 	/**
 	 * 根据图片id删除服务图片
-	 * 
+	 *
 	 * @param serviceImgId
 	 * @return
 	 */
-	void deleteServiceImg(long serviceImgId);
+	public int deleteServiceImg(long serviceImgId);
 
 	/**
 	 * 根据服务id删除相关服务图片
@@ -47,5 +57,5 @@ public interface ServiceImgDao {
 	 * @param serviceId
 	 * @return
 	 */
-	void deleteImgByServiceId(long serviceId);
+	public int deleteImgByServiceId(long serviceId);
 }

@@ -2,9 +2,12 @@ package com.service.impl;
 
 import com.dao.ServiceDao;
 import com.dao.ServiceImgDao;
-import com.util.ImageHolder;
+import com.dto.ImageHolder;
+import com.dto.ServiceExecution;
 import com.entity.ServiceImg;
 import com.entity.ServiceInfo;
+import com.enums.ServiceStateEnum;
+import com.exceptions.ServiceOperationException;
 import com.service.SService;
 import com.util.ImageUtil;
 import com.util.PageCalculator;
@@ -26,155 +29,284 @@ public class SServiceImpl implements SService {
 	@Autowired
 	private ServiceImgDao serviceImgDao;
 	// 字符串按照整型排序比较器
-    static class PriorityComparator implements Comparator<ServiceInfo> {
-        private boolean reverseOrder; // 是否倒序
-        public PriorityComparator(boolean reverseOrder) {
-            this.reverseOrder = reverseOrder;
-        }
-        
-        public int compare(ServiceInfo arg0, ServiceInfo arg1) {
-            if(reverseOrder) 
-                return (int)(arg1.getServicePriority() - arg0.getServicePriority());
-            else 
-                return (int)(arg0.getServicePriority() - arg1.getServicePriority());
-        }
+	static class PriorityComparator implements Comparator<ServiceInfo> {
+		private boolean reverseOrder; // 是否倒序
+		public PriorityComparator(boolean reverseOrder) {
+			this.reverseOrder = reverseOrder;
+		}
+
+		public int compare(ServiceInfo arg0, ServiceInfo arg1) {
+			if(reverseOrder)
+				return (int)(arg1.getServicePriority() - arg0.getServicePriority());
+			else
+				return (int)(arg0.getServicePriority() - arg1.getServicePriority());
+		}
 
 
-    }
-
+	}
 
 	@Override
-	public List<ServiceInfo> getServiceList(ServiceInfo serviceCondition, int pageIndex, int pageSize,String sort,String order) {
+	public ServiceExecution getServiceList(ServiceInfo serviceCondition, int pageIndex, int pageSize, String sort, String order) {
 		// 将页码转换成行码
 		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
 		// 依据查询条件，调用dao层返回相关的服务列表
 		List<ServiceInfo> serviceList = serviceDao.queryServiceList(serviceCondition, rowIndex, pageSize,sort,order);
-		return serviceList;
+		// 依据相同的查询条件，返回服务总数
+		int count = serviceDao.queryServiceCount(serviceCondition);
+		// Collections.sort(serviceList, new PriorityComparator(true));
+		ServiceExecution se = new ServiceExecution();
+		if (serviceList != null) {
+			se.setServiceList(serviceList);
+			se.setCount(count);
+		} else {
+			se.setState(ServiceStateEnum.INNER_ERROR.getState());
+		}
+		return se;
 	}
-
-
 	@Override
-	public List<ServiceInfo> getByShopId(long shopId, int pageIndex, int pageSize){
+	public ServiceExecution getByShopId(long shopId, int pageIndex, int pageSize){
 		// 将页码转换成行码
 		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
 		// 依据查询条件，调用dao层返回相关的服务列表
-		
+
 		ServiceInfo serviceCondition = new ServiceInfo();
 		serviceCondition.setShopId(shopId);
 		List<ServiceInfo> serviceList = serviceDao.queryServiceList(serviceCondition, rowIndex, pageSize,null,null);
-
-		return serviceList;
+		ServiceExecution se = new ServiceExecution();
+		// 依据相同的查询条件，返回服务总数
+		int count = serviceDao.queryServiceCount(serviceCondition);
+		if (serviceList != null) {
+			se.setServiceList(serviceList);
+			se.setCount(count);
+		} else {
+			se.setState(ServiceStateEnum.INNER_ERROR.getState());
+		}
+		return se;
 	}
-
 	@Override
-	public List<ServiceInfo> getByShopId2(long shopId){
+	public ServiceExecution getByShopId2(long shopId){
 		// 依据查询条件，调用dao层返回相关的服务列表
 		ServiceInfo serviceCondition = new ServiceInfo();
 		serviceCondition.setShopId(shopId);
 		List<ServiceInfo> serviceList = serviceDao.queryServiceList2(serviceCondition);
-		List<ServiceInfo> se = new ArrayList<ServiceInfo>();
+		ServiceExecution se = new ServiceExecution();
+		// 依据相同的查询条件，返回服务总数
+
+		if (serviceList != null) {
+			se.setServiceList(serviceList);
+			se.setCount(serviceList.size());
+		}
+		else {
+			se.setState(ServiceStateEnum.INNER_ERROR.getState());
+		}
 		return se;
 	}
-
-
-
 	@Override
 	public ServiceInfo getByServiceId(long serviceId) {
 		return serviceDao.queryByServiceId(serviceId);
 	}
-
-
-    //更新图片
+	//更新图片
 	@Override
 	@Transactional
-	public ServiceImg uploadImg(long serviceId, ImageHolder serviceImgHolder,Date createTime)
+	public ServiceExecution uploadImg(long serviceId, ImageHolder serviceImgHolder,Date createTime)throws ServiceOperationException
 	{
-		ServiceImg seI = new ServiceImg();
-		// 根据serviceId获取原来的图片
-		ServiceImg serviceImg = serviceImgDao.getServiceImgList(serviceId).get(0);
-         if (serviceImgHolder != null && serviceImgHolder.getImage() != null
-				 && serviceImgHolder.getImageName() != null
-	        	&& !"".equals(serviceImgHolder.getImageName())) {
-         	if (serviceImg!=null){
-        	//图片存在，则删除图片
-				deleteServiceImg(serviceImg);
-        	}
-        	seI=addServiceImg(serviceId, serviceImgHolder,createTime);
-         	//将该图片信息写回数据库
-         	serviceImgDao.insertServiceImg(seI);
-          }
-		return seI;
-	}
+		ServiceExecution serviceExecution = null;
+		try {
+			// 根据serviceId获取原来的图片
+			ServiceImg serviceImg = serviceImgDao.getServiceImgList(serviceId).get(0);
+			if (serviceImgHolder != null && serviceImgHolder.getImage() != null && serviceImgHolder.getImageName() != null
+					&& !"".equals(serviceImgHolder.getImageName())) {
+				if (serviceImg!=null){
+					//图片存在，则删除图片
+					serviceExecution=deleteServiceImg(serviceImg);
+				}
+				if (createTime==null) {
 
+					return new ServiceExecution(ServiceStateEnum.NULL_SERVICEIMG_CREATETIME);
+				}
+				serviceExecution=addServiceImg(serviceId, serviceImgHolder,createTime);
+			}
+		}
+		catch (Exception e) {
+			throw new ServiceOperationException("updateServiceImg error:" + e.getMessage());
+		}
+		return serviceExecution;
+	}
+	@Override
+	public ServiceExecution createServiceImg(Long serviceId, ImageHolder serviceImgHolder)
+			throws ServiceOperationException {
+		if (serviceId != null&&serviceId>0) {
+			try {
+				ServiceInfo service=new ServiceInfo();
+				service=serviceDao.queryByServiceId(serviceId);
+				if(service==null)
+				{
+					return new ServiceExecution(ServiceStateEnum.NULL_Service);
+				}
+				else
+				{
+					//图片存在，应更改图片，而非添加图片
+					String imgaddr=service.getServiceImgAddr();
+					if(imgaddr==null||imgaddr==""||imgaddr.equals(""))
+					{
+						addServiceImg(serviceId, serviceImgHolder,new Date());
+						service.setServiceImgAddr(serviceImgDao.getServiceImgList(serviceId).get(0).getImgAddr());
+						int effectedNum = serviceDao.updateService(service);
+						if (effectedNum <= 0) {
+							throw new ServiceOperationException("服务修改失败");
+						}
+					}
+					else
+					{
+						return new ServiceExecution(ServiceStateEnum.NOT_NULL_ServiceImg);
+
+					}
+				}
+			} catch (Exception e) {
+				throw new ServiceOperationException("createServiceImg error:" + e.toString());
+			}
+		} else {
+			return new ServiceExecution(ServiceStateEnum.NULL_ServiceImg);
+		}
+		return new ServiceExecution(ServiceStateEnum.SUCCESS);
+	}
 
 	@Override
-	public void addService(ServiceInfo service)  {
-    	// 添加服务信息（从前端读取数据）
-		serviceDao.insertService(service);
-		ServiceInfo se=new ServiceInfo();
+	public ServiceExecution addService(ServiceInfo service) throws ServiceOperationException {
+		// 空值判断
+		if (service == null) {
+			return new ServiceExecution(ServiceStateEnum.NULL_Service);
+		}
+		try {
+			// 添加服务信息（从前端读取数据）
+			int effectedNum = serviceDao.insertService(service);
+			if (effectedNum <= 0) {
+				throw new ServiceOperationException("服务创建失败");
+			}
+		} catch (Exception e) {
+			throw new ServiceOperationException("addService error:" + e.getMessage());
+		}
+		return new ServiceExecution(ServiceStateEnum.SUCCESS, service);
 	}
-
-
 	@Transactional
 	@Override
-	public ServiceInfo modifyService(ServiceInfo service){
-    	// 修改服务信息
-		serviceDao.updateService(service);
-
-		return service;
+	public ServiceExecution modifyService(ServiceInfo service) throws ServiceOperationException{
+		// 空值判断
+		if (service == null) {
+			return new ServiceExecution(ServiceStateEnum.NULL_Service);
+		}
+		try {
+			// 修改服务信息
+			int effectedNum = serviceDao.updateService(service);
+			if (effectedNum <= 0) {
+				throw new ServiceOperationException("服务修改失败");
+			}
+		} catch (Exception e) {
+			throw new ServiceOperationException("modifyService error:" + e.getMessage());
+		}
+		return new ServiceExecution(ServiceStateEnum.SUCCESS, service);
 	}
 
-	//将服务图片信息注入服务图片对象
-	public ServiceImg addServiceImg(long serviceId, ImageHolder serviceImgHolder,Date createTime) {
+	public ServiceExecution addServiceImg(long serviceId, ImageHolder serviceImgHolder,Date createTime) {
 		// 获取图片存储路径，这里直接存放到相应服务的文件夹底下
 		String dest = PathUtil.getServiceImgPath(serviceId);
 		String imgAddr = ImageUtil.generateNormalImg(serviceImgHolder, dest);
 		imgAddr=imgAddr.replace("\\","/");
-	    ServiceImg serviceImg = new ServiceImg();
-	    serviceImg.setImgAddr(imgAddr);
-	    serviceImg.setServiceId(serviceId);
-	    serviceImg.setCreateTime(createTime);
-		return serviceImg;
+		ServiceImg serviceImg = new ServiceImg();
+		serviceImg.setImgAddr(imgAddr);
+		serviceImg.setServiceId(serviceId);
+		serviceImg.setCreateTime(createTime);
+		try {
+			int effectedNum =serviceImgDao.insertServiceImg(serviceImg);
+			if (effectedNum <= 0) {
+				throw new ServiceOperationException("创建服务图片失败");
+			}
+		} catch (Exception e) {
+			throw new ServiceOperationException("创建服务图片失败:" + e.toString());
+		}
+		return new ServiceExecution(ServiceStateEnum.SUCCESS, serviceImg);
 	}
-
-
 	@Override
-	public List<ServiceImg> getServiceImgList(ServiceImg serviceImg, int pageIndex, int pageSize, String sort, String order) {
+	public ServiceExecution getServiceImgList(ServiceImg serviceImg,int pageIndex, int pageSize,String sort,String order) {
 		// 将页码转换成行码
 		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
 		// 依据查询条件，调用dao层返回相关的服务图片列表
 		List<ServiceImg> serviceImgList = serviceImgDao.queryServiceImg(serviceImg, rowIndex, pageSize,sort,order);
-		return serviceImgList;
+		ServiceExecution aie = new ServiceExecution();
+		int count = serviceImgDao.queryServiceImgCount(serviceImg);
+		if (serviceImgList != null) {
+			aie.setServiceImgList(serviceImgList);
+			aie.setCount(count);
+		} else {
+			aie.setState(ServiceStateEnum.INNER_ERROR.getState());
+		}
+		return aie;
 	}
-
-
 	@Override
-	public List<ServiceImg> getServiceImg(long serviceId) {
+	public ServiceExecution getServiceImg(long serviceId) {
 		// 依据查询条件，调用dao层返回相关的服务图片列表
+//		ServiceImg serviceImg = serviceImgDao.getServiceImg(serviceId);
 		List<ServiceImg> serviceImgList = serviceImgDao.getServiceImgList(serviceId);
-		return serviceImgList;
+		ServiceExecution aie = new ServiceExecution();
+		if (serviceImgList != null) {
+//			List<ServiceImg> serviceImgList =new ArrayList<ServiceImg>();
+//			serviceImgList.add(serviceImg);
+			aie.setServiceImgList(serviceImgList);
+			aie.setCount(serviceImgList.toArray().length);
+		} else {
+			aie.setState(ServiceStateEnum.INNER_ERROR.getState());
+		}
+		return aie;
 	}
-
-
 	/**
 	 * 删除某个店铺下的服务详情图
 	 *
 	 * @param serviceImg
 	 */
-	public void deleteServiceImg(ServiceImg serviceImg) {
-
-	    ImageUtil.deleteFileOrPath(serviceImg.getImgAddr());	
-		// 删除数据库里原有图片的信息
-		serviceImgDao.deleteServiceImg(serviceImg.getServiceImgId());
+	public ServiceExecution deleteServiceImg(ServiceImg serviceImg) {
+		// 空值判断
+		if (serviceImg == null) {
+			return new ServiceExecution(ServiceStateEnum.NULL_ServiceImg);
+		}
+		// 删除原来的图片
+		ImageUtil.deleteFileOrPath(serviceImg.getImgAddr());
+		try {
+			// 删除数据库里原有图片的信息
+			int effectedNum = serviceImgDao.deleteServiceImg(serviceImg.getServiceImgId());
+			if (effectedNum <= 0) {
+				throw new ServiceOperationException("服务图片删除失败");
+			}
+		} catch (Exception e) {
+			throw new ServiceOperationException("deleteServiceImg error:" + e.getMessage());
+		}
+		return new ServiceExecution(ServiceStateEnum.SUCCESS, serviceImg);
 	}
 
 	@Override
-	public void deleteService(long serviceId)
+	public ServiceExecution deleteService(long serviceId) throws ServiceOperationException
 	{
-		// 删除服务信息
-		serviceDao.deleteService(serviceId);
-		serviceImgDao.deleteImgByServiceId(serviceId);
+		if(serviceId<=0)
+		{
+			return new ServiceExecution(ServiceStateEnum.NULL_SeriveId);
+		}
+		try {
+			// 删除服务信息
+			int effectedNum = serviceDao.deleteService(serviceId);
+
+			if (effectedNum <= 0) {
+				throw new ServiceOperationException("服务删除失败");
+			}
+			serviceImgDao.deleteImgByServiceId(serviceId);
+//					ServiceImg serviceImg=serviceImgDao.getServiceImgList(serviceId).get(0);
+//					if(serviceImg!=null)
+//					deleteServiceImg(serviceImg);
+		} catch (Exception e) {
+			throw new ServiceOperationException("deleteService error:" + e.getMessage());
+		}
+		return new ServiceExecution(ServiceStateEnum.SUCCESS,serviceDao.queryByServiceId(serviceId));
 	}
+
+
 
 
 }

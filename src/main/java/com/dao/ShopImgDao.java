@@ -12,30 +12,57 @@ public interface ShopImgDao {
 	/**
 	 * 列出某个商铺的详情图列表
 	 *
+	 * @param shopId
+	 * @return
 	 */
 	List<ShopImg> getShopImgList(long shopId);
 
 	/**
-	 * 根据图片Id获取商铺图片
+	 * 获取商铺图片
 	 *
+	 * @param shopImgId
+	 * @return
 	 */
 	ShopImg getShopImg(long shopImgId);
 
 	/**
 	 * 添加商铺详情图片
 	 *
+	 * @param shopImg
+	 * @return
 	 */
-	void insertShopImg(ShopImg shopImg);
+	int insertShopImg(ShopImg shopImg);
 
 	/**
 	 * 通过商铺图片ID删除商铺图片
 	 *
+	 * @param shopImgId
+	 * @return
 	 */
-	void delShopImgByShopImgId(long shopImgId);
+	int delShopImgByShopImgId(long shopImgId);
 
 	/**
-	 * 删除指定商铺下的所有老旧详情图
+	 * 分页获取商铺图片
 	 *
+	 * @param rowIndex
+	 * @param pageSize
+	 * @return
 	 */
-	void deleteShopImgByShopIdAndCreateTime(@Param("shopId") long shopId, @Param("createTime") Date createTime);
+	List<ShopImg> queryShopImgList(@Param("shopImgCondition") ShopImg shopImgCondition, @Param("rowIndex") int rowIndex,
+								   @Param("pageSize") int pageSize, @Param("sort") String sort, @Param("order") String order);
+
+	/**
+	 * 获取商铺图片总数
+	 *
+	 * @return
+	 */
+	int queryShopImgCount(@Param("shopImgCondition") ShopImg shopImgCondition);
+
+	/**
+	 * 删除指定商铺下的所有详情图
+	 *
+	 * @param shopId
+	 * @return
+	 */
+	int deleteShopImgByShopIdAndCreateTime(@Param("shopId") long shopId, @Param("createTime") Date createTime);
 }

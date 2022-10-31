@@ -31,7 +31,7 @@
 		</where>
 	</select>
 	<select id="queryShopList"
-		resultMap="shopMap">
+			resultType="com.entity.Shop">
 		SELECT
 		user_name,shop_id,tb_shop.user_id,shop_name,business_license_img,business_license_code,per_cost,tb_shop.phone,province,city,district,
 		full_address,shop_more_info,is_mobile,tb_shop.profile_img,latitude,longitude,
@@ -62,7 +62,7 @@
 			<if test="shopCondition.shopId != null">
 				and shop_id = #{shopCondition.shopId}
 			</if>
-		    <if test="shopCondition.businessLicenseCode != null">
+			<if test="shopCondition.businessLicenseCode != null">
 				and business_license_code = #{shopCondition.businessLicenseCode}
 			</if>
 			<if test="shopCondition.phone != null">
@@ -118,6 +118,7 @@
 		</set>
 		where shop_id=#{shopId}
 	</update>
+
 	<select id="queryByShopId"
 		resultMap="shopMap" parameterType="Long">
 		SELECT
@@ -128,6 +129,60 @@
 		tb_shop
 		WHERE
 		shop_id=#{shopId}
+	</select>
+
+	<select id="queryByUserId"
+			resultMap="shopMap" parameterType="Long">
+		SELECT
+		shop_id,user_id,shop_name,business_license_img,business_license_code,per_cost,phone,province,city,district,
+		full_address,shop_more_info,is_mobile,profile_img,latitude,longitude,
+		enable_status,business_scope,create_time,last_edit_time
+		FROM
+		tb_shop
+		WHERE
+		shop_id=#{userId}
+	</select>
+
+	<select id="queryShopCount" resultType="int">
+		SELECT
+		count(1)
+		FROM
+		tb_shop
+		<where>
+			<if test="shopCondition.shopName != null">
+				and shop_name like '%${shopCondition.shopName}%'
+			</if>
+			<if test="shopCondition.enableStatus != null">
+				and enable_status = #{shopCondition.enableStatus}
+			</if>
+			<if test="shopCondition.province != null">
+				and province = #{shopCondition.province}
+			</if>
+			<if test="shopCondition.city != null">
+				and city = #{shopCondition.city}
+			</if>
+			<if test="shopCondition.district != null">
+				and district = #{shopCondition.district}
+			</if>
+			<if test="shopCondition.isMobile != null">
+				and is_mobile = #{shopCondition.isMobile}
+			</if>
+			<if test="shopCondition.userId != null">
+				and user_id = #{shopCondition.userId}
+			</if>
+			<if test="shopCondition.shopId != null">
+				and shop_id = #{shopCondition.shopId}
+			</if>
+			<if test="shopCondition.businessLicenseCode != null">
+				and business_license_code = #{shopCondition.businessLicenseCode}
+			</if>
+			<if test="shopCondition.phone != null">
+				and phone = #{shopCondition.phone}
+			</if>
+			<if test="shopCondition.fullAddress != null">
+				and full_address = #{shopCondition.fullAddress}
+			</if>
+		</where>
 	</select>
 
 	<resultMap id="shopMap" type="com.entity.Shop">
@@ -141,7 +196,7 @@
 		<result property="shopMoreInfo" column="shop_more_info"/>
 		<result property="isMobile" column="is_mobile"/>
 		<result property="profileImg" column="profile_img"/>
-		<result property="enable_status" column="enable_status"/>
+		<result property="enableStatus" column="enable_status"/>
 		<result property="businessScope" column="business_scope"/>
 		<result property="createTime" column="create_time"/>
 		<result property="lastEditTime" column="last_edit_time"/>

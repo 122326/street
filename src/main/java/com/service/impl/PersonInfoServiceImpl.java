@@ -3,32 +3,56 @@ package com.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.dao.PersonInfoDao;
-import com.util.ImageHolder;
+import com.dto.ImageHolder;
+import com.util.*;
 import com.entity.PersonInfo;
 import com.service.PersonInfoService;
-import com.util.ImageUtil;
-import com.util.PageCalculator;
-import com.util.PathUtil;
+import com.vo.LoginVo;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
+@Slf4j
 public class PersonInfoServiceImpl extends ServiceImpl<PersonInfoDao, PersonInfo> implements PersonInfoService {
 	@Autowired
 	private PersonInfoDao personInfoDao;
+
+	@Value("${jwt.tokenHead}")
+	private String tokenHead;
+
 	@Autowired
-	private com.dao.UsersInformDao UsersInformDao;
+	private JwtTokenUtil jwtTokenUtil;
+
+	@Autowired
+	private UserDetailsService userDetailsService;
+
+	@Autowired
+	private PasswordEncoder passwordEncoder;
+
 
 	@Override
 	public PersonInfo getPersonInfoByUserId(long userId) {
 		return personInfoDao.queryPersonInfoByUserId(userId);
 	}
+
 	@Override
 	public PersonInfo getPersonInfoByPhone(String phone){return  personInfoDao.queryPersonInfoByPhone(phone);}
+
+	@Override
+	public PersonInfo getPersonInfoByUserName(String userName){return personInfoDao.queryPersonInfoByUserName(userName);}
 
 
 	@Override
@@ -107,4 +131,32 @@ public class PersonInfoServiceImpl extends ServiceImpl<PersonInfoDao, PersonInfo
 		return personInfo != null && personInfo.getRealName() != null && personInfo.getIdentificationNumber() != null;
 	}
 
+	@Override
+	public Result login(LoginVo loginVo) {
+		log.info("登陆");
+		UserDetails userDetails = userDetailsService.loadUserByUsername(loginVo.getPhone());
+		if (null == userDetails || !passwordEncoder.matches(loginVo.getPassword(), userDetails.getPassword())) {
+			log.info("用户名或密码错误！！");
+			return Result.fail("用户名或密码错误！");
+		}
+		if (!userDetails.isEnabled()) {
+			log.info("该帐号已被禁用，请联系管理员！");
+			return Result.fail("该帐号已被禁用，请联系管理员！");
+		}
+		log.info("token");
+
+		//更新security登录用户对象
+		//UsernamePasswordAuthenticationToke：账户密码认证，是Authentication接口常用的实现类
+		UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+		SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+		String token = jwtTokenUtil.generateToken(userDetails);
+		Map<String, String> map = new HashMap<>(16);
+		map.put("tokenHead", tokenHead);
+		log.info(tokenHead);
+		map.put("token", token);
+		log.info(token);
+		log.info("111");
+		return Result.success("登陆成功", map);
+
+	}
 }

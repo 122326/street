@@ -1,6 +1,6 @@
 package com.controller;
 
-import com.util.ImageHolder;
+import com.dto.ImageHolder;
 import com.entity.*;
 import com.service.AppealService;
 import com.service.HelpService;

@@ -3,7 +3,7 @@
 	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.dao.OrderDao">
-	<select id="queryOrderList" resultMap="orderMap">
+	<select id="queryOrderList" resultType="com.graduation.ss.entity.OrderInfo">
 		SELECT
 		user_name,order_id,service_id,tb_order.user_id,service_count,order_status,tb_order.create_time,over_time,service_name,order_price
 		FROM
@@ -15,7 +15,7 @@
 				and order_status= #{orderCondition.orderStatus}
 			</if>
 			<if
-				test="orderCondition.userId != null">
+					test="orderCondition.userId != null">
 				and tb_order.user_id = #{orderCondition.userId}
 			</if>
 			<if
@@ -23,18 +23,18 @@
 				and order_id = #{orderCondition.orderId}
 			</if>
 			<if
-				test="orderCondition.serviceId != null">
+					test="orderCondition.serviceId != null">
 				and service_id = #{orderCondition.serviceId}
-			</if> 
+			</if>
 			<if test="orderCondition.serviceName != null">
 				and service_name like '%${orderCondition.serviceName}%'
 			</if>
 			<if test="orderCondition.createTime != null">
-			    and DATE_FORMAT(create_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.createTime},'%Y %m %d')
-		   </if>
+				and DATE_FORMAT(create_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.createTime},'%Y %m %d')
+			</if>
 			<if test="orderCondition.overTime != null">
-			    and DATE_FORMAT(over_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.overTime},'%Y %m %d')
-		</if>
+				and DATE_FORMAT(over_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.overTime},'%Y %m %d')
+			</if>
 		</where>
 		<if test="sort != null and order != null">
 			ORDER BY ${sort} ${order}
@@ -44,8 +44,94 @@
 		</if>
 		LIMIT #{rowIndex},#{pageSize};
 	</select>
+	<select id="queryOrderCount" resultType="int">
+		SELECT
+		count(1)
+		FROM
+		tb_order t
+		<where>
+			<if test="orderCondition.orderStatus != null">
+				and order_status= #{orderCondition.orderStatus}
+			</if>
+			<if
+					test="orderCondition.userId != null">
+				and user_id = #{orderCondition.userId}
+			</if>
+			<if
+					test="orderCondition.orderId != null">
+				and order_id = #{orderCondition.orderId}
+			</if>
+			<if
+					test="orderCondition.serviceId != null">
+				and service_id = #{orderCondition.serviceId}
+			</if>
+			<if test="orderCondition.serviceName != null">
+				and service_name like '%${orderCondition.serviceName}%'
+			</if>
+			<if test="orderCondition.createTime != null">
+				and DATE_FORMAT(create_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.createTime},'%Y %m %d')
+			</if>
+			<if test="orderCondition.overTime != null">
+				and DATE_FORMAT(over_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.overTime},'%Y %m %d')
+			</if>
+		</where>
+	</select>
+	<insert id="insertOrder" parameterType="com.graduation.ss.entity.OrderInfo"
+			useGeneratedKeys="true" keyProperty="orderId" keyColumn="order_id">
+		INSERT
+		INTO
+		tb_order(service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price)
+		VALUES
+		(#{serviceId},#{userId},#{serviceCount},#{orderStatus},#{createTime},#{overTime},#{serviceName},#{orderPrice})
+	</insert>
+	<insert id="insertOrderInfo" parameterType="java.util.List"
+			useGeneratedKeys="true" keyProperty="orderId" keyColumn="order_id">
+		INSERT
+		INTO
+		tb_order(service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price)
+		VALUES
+		<foreach collection="list" item="orderInfoDTO" index="index"
+				 separator=",">
+			(
+			#{orderInfoDTO.serviceId},
+			#{orderInfoDTO.userId},
+			#{orderInfoDTO.serviceCount},
+			#{orderInfoDTO.orderStatus},
+			#{orderInfoDTO.createTime},
+			#{orderInfoDTO.overTime},
+			#{orderInfoDTO.serviceName},
+			#{orderInfoDTO.orderPrice}
+			)
+		</foreach>
+	</insert>
 
-	<select id="queryOrderList2" resultMap="orderMap">
+	<update id="updateOrder" parameterType="com.graduation.ss.entity.OrderInfo">
+		update tb_order
+		<set>
+			<if test="serviceId!= null">service_id=#{serviceId},</if>
+			<if test="userId != null">user_id=#{userId},</if>
+			<if test="serviceCount != null">service_count=#{serviceCount},</if>
+			<if test="orderStatus != null">order_status=#{orderStatus},</if>
+			<if test="createTime!=null">create_time=#{createTime},</if>
+			<if test="overTime!= null">over_time=#{overTime},</if>
+			<if test="serviceName!= null">service_name=#{serviceName},</if>
+			<if test="orderPrice!= null">order_price=#{orderPrice},</if>
+			<if test="isDelete!= null">is_delete=#{isDelete}</if>
+		</set>
+		where order_id=#{orderId}
+	</update>
+	<delete id="deleteOrder">
+		delete from tb_order where order_id=#{orderId}
+	</delete>
+	<select id="queryByOrderId" resultType="com.graduation.ss.entity.OrderInfo" parameterType="Long">
+		SELECT
+		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
+		FROM
+		tb_order
+		WHERE
+		order_id=#{orderId}
+	</select>
+	<select id="queryOrderList2" resultType="com.graduation.ss.entity.OrderInfo">
 		SELECT
 		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
 		FROM
@@ -78,52 +164,120 @@
 		</where>
 		ORDER BY create_time desc
 	</select>
-
-	<insert id="insertOrder" parameterType="com.entity.OrderInfo"
-		useGeneratedKeys="true" keyProperty="orderId" keyColumn="order_id">
-		INSERT
-		INTO
-		tb_order(service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price)
-		VALUES
-		(#{serviceId},#{userId},#{serviceCount},#{orderStatus},#{createTime},#{overTime},#{serviceName},#{orderPrice})
-	</insert>
-
-	
-	<update id="updateOrder" parameterType="com.entity.OrderInfo">
-		update tb_order 
-		<set>
-            <if test="serviceId!= null">service_id=#{serviceId},</if>
-			<if test="userId != null">user_id=#{userId},</if>
-			<if test="serviceCount != null">service_count=#{serviceCount},</if>
-			<if test="orderStatus != null">order_status=#{orderStatus},</if>
-			<if test="createTime!=null">create_time=#{createTime},</if>
-			<if test="overTime!= null">over_time=#{overTime},</if>
-			<if test="serviceName!= null">service_name=#{serviceName},</if>
-			<if test="orderPrice!= null">order_price=#{orderPrice},</if>
-			<if test="isDelete!= null">is_delete=#{isDelete}</if>
-		</set>
-		where order_id=#{orderId}
-	</update>
-
-	<select id="queryByOrderId" resultMap="orderMap" parameterType="Long">
+	<select id="queryOrderList3" resultType="com.graduation.ss.entity.OrderInfo">
 		SELECT
 		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
 		FROM
-		tb_order 
-		WHERE
-		order_id=#{orderId}
+		tb_order
+		<where>
+			<if
+					test="orderCondition.userId != null">
+				and user_id = #{orderCondition.userId}
+			</if>
+			<if
+					test="orderCondition.serviceId != null">
+				and service_id = #{orderCondition.serviceId}
+			</if>
+			<if test="orderCondition.serviceName != null">
+				and service_name like '%${orderCondition.serviceName}%'
+			</if>
+			<if test="orderCondition.createTime != null">
+				and DATE_FORMAT(create_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.createTime},'%Y %m %d')
+			</if>
+			<if test="orderCondition.overTime != null">
+				and DATE_FORMAT(over_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.overTime},'%Y %m %d')
+			</if>
+			and order_status!=0
+		</where>
+	</select>
+	<select id="queryOrderByUS" resultType="com.graduation.ss.entity.OrderInfo">
+		SELECT
+		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
+		FROM
+		tb_order
+		<where>
+			<if
+					test="orderCondition.userId != null">
+				and user_id = #{orderCondition.userId}
+			</if>
+			<if
+					test="orderCondition.serviceId != null">
+				and service_id = #{orderCondition.serviceId}
+			</if>
+			<if test="orderCondition.orderStatus != null">
+				and order_status= #{orderCondition.orderStatus}
+			</if>
+		</where>
 	</select>
 
-	<resultMap id="orderMap" type="com.entity.OrderInfo">
-		<id property="orderId" column="order_id"/>
-		<result property="serviceId" column="service_id"/>
-		<result property="userId" column="user_id"/>
-		<result property="serviceCount" column="service_count"/>
-		<result property="orderStatus" column="order_status"/>
-		<result property="createTime" column="create_time"/>
-		<result property="overTime" column="over_time"/>
-		<result property="serviceName" column="service_name"/>
-		<result property="orderPrice" column="order_price"/>
-		<result property="isDelete" column="is_delete"/>
-	</resultMap>
+	<select id="queryOrderList4" resultType="com.graduation.ss.entity.OrderInfo">
+		SELECT
+		user_name,tb_order.order_id,tb_order.service_id,tb_order.user_id,service_count,order_status,tb_order.create_time,tb_order.over_time,service_name,order_price
+		FROM tb_order
+		INNER JOIN tb_person_info USING(user_id)
+		LEFT OUTER JOIN  tb_shop_comment  USING(order_id)
+		<where>
+			<if test="orderCondition.orderStatus != null">
+				and order_status= #{orderCondition.orderStatus}
+			</if>
+			<if
+					test="orderCondition.userName != null">
+				and tb_person_info.user_name = #{orderCondition.userName}
+			</if>
+
+			<if test="orderCondition.serviceName != null">
+				and tb_order.service_name like '%${orderCondition.serviceName}%'
+
+			</if>
+
+			<if
+					test="orderCondition.phone != null">
+				and tb_person_info.phone = #{orderCondition.phone}
+			</if>
+			<if
+					test="orderCondition.email != null">
+				and tb_person_info.email = #{orderCondition.email}
+			</if>
+			<if test="orderCondition.isDelete != null">
+				and is_delete = #{orderCondition.isDelete}
+			</if>
+			<if
+					test="orderCondition.reputation != null">
+				<if test="orderCondition.reputation == 0">
+					and tb_shop_comment.service_rating &gt;= 80
+				</if>
+
+				<if test="orderCondition.reputation == 1">
+					and tb_shop_comment.service_rating &gt;= 60
+					and 80 &gt;= tb_shop_comment.service_rating
+				</if>
+				<if test="orderCondition.reputation == 2">
+					and 60 &gt;= tb_shop_comment.service_rating
+				</if>
+
+			</if>
+
+			<if test="orderCondition.orderStart != null">
+				and DATE_FORMAT(tb_order.create_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.orderStart},'%Y %m %d')
+			</if>
+			<if test="orderCondition.orderEnd != null">
+				and DATE_FORMAT(#{orderCondition.orderEnd},'%Y %m %d') &gt;=  DATE_FORMAT(tb_order.create_time,'%Y %m %d')
+			</if>
+
+			<if test="orderCondition.finishStart != null">
+				and DATE_FORMAT(tb_order.over_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.finishStart},'%Y %m %d')
+			</if>
+			<if test="orderCondition.finishStart != null">
+				and DATE_FORMAT(#{orderCondition.finishStart},'%Y %m %d') &gt;=  DATE_FORMAT(tb_order.over_time,'%Y %m %d')
+			</if>
+
+			<!--			<if test="orderCondition.createTime != null">-->
+			<!--				and DATE_FORMAT(create_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.createTime},'%Y %m %d')-->
+			<!--			</if>-->
+			<!--			<if test="orderCondition.overTime != null">-->
+			<!--				and DATE_FORMAT(over_time,'%Y %m %d') &gt;=  DATE_FORMAT(#{orderCondition.overTime},'%Y %m %d')-->
+			<!--			</if>-->
+		</where>
+		ORDER BY tb_order.create_time desc
+	</select>
 </mapper>

@@ -1,7 +1,7 @@
 package com.service;
 
 
-import com.util.ImageHolder;
+import com.dto.ImageHolder;
 import com.entity.Appeal;
 import com.entity.AppealImg;
 

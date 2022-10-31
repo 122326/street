@@ -1,15 +1,18 @@
 package com.entity;
-
 import com.alibaba.fastjson.annotation.JSONField;
-import com.auth0.jwt.internal.com.fasterxml.jackson.annotation.JsonFormat;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Data;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
-
-@TableName("tb_person_info")
-public class PersonInfo {
+@Data
+//@TableName("tb_person_info")
+public class PersonInfo implements UserDetails {
 	private Long userId;
 	private String userName;
 	private String password;
@@ -32,153 +35,84 @@ public class PersonInfo {
 	@Version
 	private Integer version;
 
-	public Long getUserId() {
-		return userId;
+	/**
+	 * 权限数据
+	 * @return
+	 */
+
+	@Override
+	@JsonIgnore
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		List<GrantedAuthority> list = new ArrayList<>();
+		list.add(new GrantedAuthority() {
+			@Override
+			public String getAuthority() {
+				switch (userType){
+					case 1:
+						return "ADMIN";
+					default:
+						return "user";
+				}
+			}
+		});
+		return null;
 	}
 
-	public void setUserId(Long userId) {
-		this.userId = userId;
-	}
-
-	public String getUserName() {
-		return userName;
-	}
-
-	public void setUserName(String userName) {
-		this.userName = userName;
-	}
-
-	public String getProfileImg() {
-		return profileImg;
-	}
-
-	public void setProfileImg(String profileImg) {
-		this.profileImg = profileImg;
-	}
-
-	public String getSex() {
-		return sex;
-	}
-
-	public void setSex(String sex) {
-		this.sex = sex;
-	}
-
-	public Date getBirth() {
-		return birth;
-	}
-
-	public void setBirth(Date birth) {
-		this.birth = birth;
-	}
-
-	public String getPhone() {
+	/**
+	 * 用户名
+	 * @return
+	 */
+	@Override
+	@JsonIgnore
+	public String getUsername() {
 		return phone;
 	}
 
-	public void setPhone(String phone) {
-		this.phone = phone;
+	public String getUserName(){
+		return userName;
 	}
 
-	public Long getSouCoin() {
-		return souCoin;
-	}
 
-	public void setSouCoin(Long souCoin) {
-		this.souCoin = souCoin;
-	}
 
-	public String getRealName() {
-		return realName;
-	}
-
-	public void setRealName(String realName) {
-		this.realName = realName;
-	}
-
-	public String getIdentificationNumber() {
-		return identificationNumber;
-	}
-
-	public void setIdentificationNumber(String identificationNumber) {
-		this.identificationNumber = identificationNumber;
-	}
-
-	public Integer getUserType() {
-		return userType;
-	}
-
-	public void setUserType(Integer userType) {
-		this.userType = userType;
-	}
-
-	public String getEmail() {
-		return email;
-	}
-
-	public void setEmail(String email) {
-		this.email = email;
-	}
-
-	public Date getCreateTime() {
-		return createTime;
-	}
-
-	public void setCreateTime(Date createTime) {
-		this.createTime = createTime;
-	}
-
-	public Date getLastEditTime() {
-		return lastEditTime;
-	}
-
-	public void setLastEditTime(Date lastEditTime) {
-		this.lastEditTime = lastEditTime;
-	}
-
-	public Integer getEnableStatus() {
-		return enableStatus;
-	}
-
-	public void setEnableStatus(Integer enableStatus) {
-		this.enableStatus = enableStatus;
-	}
-
-	public Integer getVersion() {
-		return version;
-	}
-
-	public void setVersion(Integer version) {
-		this.version = version;
-	}
-
-	public String getPassword() {
-		return password;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
-	}
-
+	/**
+	 * 账户是否过期
+	 * @return
+	 */
 	@Override
-	public String toString() {
-		return "PersonInfo{" +
-				"userId=" + userId +
-				", userName='" + userName + '\'' +
-				", profileImg='" + profileImg + '\'' +
-				", sex='" + sex + '\'' +
-				", birth=" + birth +
-				", phone='" + phone + '\'' +
-				", souCoin=" + souCoin +
-				", realName='" + realName + '\'' +
-				", identificationNumber='" + identificationNumber + '\'' +
-				", userType=" + userType +
-				", email='" + email + '\'' +
-				", createTime=" + createTime +
-				", lastEditTime=" + lastEditTime +
-				", enableStatus=" + enableStatus +
-				", version=" + version +
-				'}';
+	@JsonIgnore
+	public boolean isAccountNonExpired() {
+		return true;
 	}
+
+	/**
+	 * 账户是否被锁定
+	 * @return
+	 */
+	@Override
+	@JsonIgnore
+	public boolean isAccountNonLocked() {
+		return true;
+	}
+
+	/**
+	 * 凭证是否过期
+	 * @return
+	 */
+	@Override
+	@JsonIgnore
+	public boolean isCredentialsNonExpired() {
+		return true;
+	}
+
+	/**
+	 * 是否被禁用
+	 * @return
+	 */
+	@Override
+	@JsonIgnore
+	public boolean isEnabled() {
+		return true;
+	}
+
 
 }

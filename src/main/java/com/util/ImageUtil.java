@@ -1,15 +1,16 @@
 package com.util;
 
-import net.coobird.thumbnailator.Thumbnails;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
-
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
+import com.dto.ImageHolder;
+
+import net.coobird.thumbnailator.Thumbnails;
 
 public class ImageUtil {
 	private static String basePath = Thread.currentThread().getContextClassLoader().getResource("").getPath();
@@ -19,7 +20,7 @@ public class ImageUtil {
 
 	/**
 	 * 将CommonsMultipartFile转换成File类
-	 * 
+	 *
 	 * @param cFile
 	 * @return
 	 */
@@ -39,7 +40,7 @@ public class ImageUtil {
 
 	/**
 	 * 处理缩略图，并返回新生成图片的相对值路径
-	 * 
+	 *
 	 * @param thumbnail
 	 * @param targetAddr
 	 * @return
@@ -74,7 +75,7 @@ public class ImageUtil {
 
 	/**
 	 * 处理详情图，并返回新生成图片的相对值路径
-	 * 
+	 *
 	 * @param thumbnail
 	 * @param targetAddr
 	 * @return
@@ -106,7 +107,7 @@ public class ImageUtil {
 	/**
 	 * 创建目标路径所涉及到的目录，即/home/work/xiangze/xxx.jpg, 那么 home work xiangze
 	 * 这三个文件夹都得自动创建
-	 * 
+	 *
 	 * @param targetAddr
 	 */
 	private static void makeDirPath(String targetAddr) {
@@ -121,6 +122,8 @@ public class ImageUtil {
 	public static void main(String[] args) throws IOException {
 		Thumbnails.of(new File("C:/Users/Al/Pictures/test.png")).size(200, 200)
 				.outputQuality(0.8f).toFile("C:/Users/Al/Pictures/testnew.png");
+//		Thumbnails.of(new File("C:/Users/15706/Pictures/test.png")).size(200, 200)
+//				.outputQuality(0.8f).toFile("C:/Users/15706/Pictures/testnew.png");
 	}
 	/**
 	 * 获取输入文件流的扩展名
@@ -133,7 +136,7 @@ public class ImageUtil {
 
 	/**
 	 * 生成随机文件名，当前年月日小时分钟秒钟+五位随机数
-	 * 
+	 *
 	 * @return
 	 */
 	public static String getRandomFileName() {
@@ -146,7 +149,7 @@ public class ImageUtil {
 	/**
 	 * storePath是文件的路径还是目录的路径， 如果storePath是文件路径则删除该文件，
 	 * 如果storePath是目录路径则删除该目录下的所有文件
-	 * 
+	 *
 	 * @param storePath
 	 */
 	public static void deleteFileOrPath(String storePath) {

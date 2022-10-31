@@ -3,7 +3,6 @@ package com.dao;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.entity.PersonInfo;
 import org.apache.ibatis.annotations.*;
-
 import java.util.List;
 
 @Mapper
@@ -22,7 +21,10 @@ public interface PersonInfoDao extends BaseMapper<PersonInfo> {
 	 *
 	 */
 	PersonInfo queryPersonInfoByUserId(long userId);
+
+
 	PersonInfo queryPersonInfoByPhone(String phone);
+	PersonInfo queryPersonInfoByUserName(String userName);
 	/**
 	 * 添加用户信息
 	 *
@@ -33,7 +35,7 @@ public interface PersonInfoDao extends BaseMapper<PersonInfo> {
 	 * 修改用户信息
 	 *
 	 */
-	void updatePersonInfo(PersonInfo personInfo);
+	int updatePersonInfo(PersonInfo personInfo);
 
 
 }
