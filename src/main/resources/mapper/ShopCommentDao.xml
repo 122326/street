@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper
-	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.dao.ShopCommentDao">
-	<select id="queryShopCommentList" resultMap="shopCommentMap">
+	<select id="queryShopCommentList" resultType="com.entity.ShopComment">
 		SELECT
 		user_name,shop_name,shop_comment_id,tb_shop_comment.shop_id,order_id,tb_shop_comment.user_id,comment_content,service_rating,star_rating,comment_reply
 		FROM tb_shop_comment
@@ -20,19 +20,19 @@
 			</if>
 			<if test="shopCommentCondition.shopId != null">
 				and tb_shop_comment.shop_id = #{shopCommentCondition.shopId}
-			</if> 
-		<if test="shopCommentCondition.orderId != null">
+			</if>
+			<if test="shopCommentCondition.orderId != null">
 				and order_id = #{shopCommentCondition.orderId}
 			</if>
 			<if test="shopCommentCondition.userId != null">
 				and tb_shop_comment.user_id = #{shopCommentCondition.userId }
 			</if>
 			<if
-				test="shopCommentCondition.commentContent != null">
+					test="shopCommentCondition.commentContent != null">
 				and comment_content like '%${shopCommentCondition.commentContent}%'
-			</if> 
+			</if>
 			<if
-				test="shopCommentCondition.commentReply != null">
+					test="shopCommentCondition.commentReply != null">
 				and comment_reply like '%${shopCommentCondition.commentReply}%'
 			</if>
 		</where>
@@ -44,8 +44,7 @@
 		</if>
 		LIMIT #{rowIndex},#{pageSize};
 	</select>
-
-	<select id="queryShopCommentList2" resultMap="shopCommentMap">
+	<select id="queryShopCommentList2" resultType="com.entity.ShopComment">
 		SELECT
 		shop_comment_id,shop_id,tb_shop_comment.order_id,tb_shop_comment.user_id,comment_content,service_rating,star_rating,comment_reply
 		FROM
@@ -57,21 +56,47 @@
 
 			</if>
 			<if
-				test="shopCommentCondition.shopId != null">
+					test="shopCommentCondition.shopId != null">
 				and shop_id = #{shopCommentCondition.shopId}
-			</if> 
+			</if>
 			<if
-				test="shopCommentCondition.commentContent != null">
+					test="shopCommentCondition.commentContent != null">
 				and comment_content like '%${shopCommentCondition.commentContent}%'
-			</if> 
+			</if>
 			<if
-				test="shopCommentCondition.commentReply != null">
+					test="shopCommentCondition.commentReply != null">
 				and comment_reply like '%${shopCommentCondition.commentReply}%'
 			</if>
-            and is_delete = 0
+			and is_delete = 0
 		</where>
 	</select>
-
+	<select id="queryShopCommentCount" resultType="int">
+		SELECT
+		count(1)
+		FROM
+		tb_shop_comment
+		<where>
+			<if test="shopCommentCondition.userId != null">
+				and user_id = #{shopCommentCondition.userId }
+			</if>
+			<if
+					test="shopCommentCondition.orderId != null">
+				and order_id = #{shopCommentCondition.orderId}
+			</if>
+			<if
+					test="shopCommentCondition.shopId != null">
+				and shop_id = #{shopCommentCondition.shopId}
+			</if>
+			<if
+					test="shopCommentCondition.commentContent != null">
+				and comment_content like '%${shopCommentCondition.commentContent}%'
+			</if>
+			<if
+					test="shopCommentCondition.commentReply != null">
+				and comment_reply like '%${shopCommentCondition.commentReply}%'
+			</if>
+		</where>
+	</select>
 	<select id="queryAvgStarRating" resultType="float">
 		SELECT
 		AVG(star_rating) as star_avg
@@ -79,7 +104,7 @@
 		tb_shop_comment
 		where shop_id=#{shopId}
 	</select>
-		<select id="queryAvgServiceRating" resultType="float">
+	<select id="queryAvgServiceRating" resultType="float">
 		SELECT
 		AVG(service_rating) as service_avg
 		FROM
@@ -87,7 +112,7 @@
 		where shop_id=#{shopId}
 	</select>
 	<insert id="insertShopComment" parameterType="com.entity.ShopComment"
-		useGeneratedKeys="true" keyProperty="shopCommentId" keyColumn="shop_comment_id">
+			useGeneratedKeys="true" keyProperty="shopCommentId" keyColumn="shop_comment_id">
 		INSERT
 		INTO
 		tb_shop_comment(shop_id,order_id,user_id,comment_content,service_rating,star_rating,comment_reply)
@@ -95,26 +120,43 @@
 		(#{shopId},#{orderId},#{userId},#{commentContent},
 		#{serviceRating},#{starRating},#{commentReply})
 	</insert>
-	
+	<insert id="insertShopCommentInfo" parameterType="java.util.List"
+			useGeneratedKeys="true" keyProperty="shopCommentId" keyColumn="shop_comment_id">
+		INSERT
+		INTO
+		tb_shop_comment(shop_id,order_id,user_id,comment_content,service_rating,star_rating,comment_reply)
+		VALUES
+		<foreach collection="list" item="shopCommentInfoDTO" index="index"
+				 separator=",">
+			(
+			#{shopCommentInfoDTO.shopId},
+			#{shopCommentInfoDTO.orderId},
+			#{shopCommentInfoDTO.userId},
+			#{shopCommentInfoDTO.commentContent},
+			#{shopCommentInfoDTO.serviceRating},
+			#{shopCommentInfoDTO.starRating},
+			#{shopCommentInfoDTO.commentReply}
+			)
+		</foreach>
+	</insert>
+
 	<update id="updateShopComment" parameterType="com.entity.ShopComment">
 		update tb_shop_comment
 		<set>
-            <if test="shopId != null">shop_id=#{shopId},</if>
-            <if test="orderId != null">order_id=#{orderId},</if>
+			<if test="shopId != null">shop_id=#{shopId},</if>
+			<if test="orderId != null">order_id=#{orderId},</if>
 			<if test="userId != null">user_id=#{userId},</if>
 			<if test="commentContent != null">comment_content=#{commentContent},</if>
 			<if test="serviceRating != null">service_rating=#{serviceRating},</if>
-			<if test="starRating!=null">star_rating=#{starRating},</if>	
+			<if test="starRating!=null">star_rating=#{starRating},</if>
 			<if test="commentReply != null">comment_reply=#{commentReply}</if>
 		</set>
 		where shop_comment_id=#{shopCommentId}
 	</update>
-
 	<delete id="deleteShopComment">
-        delete from tb_shop_comment where shop_comment_id=#{shopCommentId}
-    </delete>
-
-	<select id="queryByShopCommentId" resultMap="shopCommentMap" parameterType="Long">
+		delete from tb_shop_comment where shop_comment_id=#{shopCommentId}
+	</delete>
+	<select id="queryByShopCommentId" resultType="com.entity.ShopComment" parameterType="Long">
 		SELECT
 		shop_id,order_id,user_id,comment_content,service_rating,star_rating,comment_reply
 		FROM
@@ -122,7 +164,7 @@
 		WHERE
 		shop_comment_id=#{shopCommentId}
 	</select>
-	<select id="queryByOrderId" resultMap="shopCommentMap" parameterType="Long">
+	<select id="queryByOrderId" resultType="com.entity.ShopComment" parameterType="Long">
 		SELECT
 		shop_comment_id,shop_id,order_id,user_id,comment_content,service_rating,star_rating,comment_reply
 		FROM
@@ -130,15 +172,4 @@
 		WHERE
 		order_id=#{orderId}
 	</select>
-
-	<resultMap id="shopCommentMap" type="com.entity.ShopComment">
-		<id property="shopCommentId" column="shop_comment_id"/>
-		<result property="shopId" column="shop_id"/>
-		<result property="orderId" column="order_id"/>
-		<result property="userId" column="user_id"/>
-		<result property="commentContent" column="comment_content"/>
-		<result property="serviceRating" column="service_rating"/>
-		<result property="startRating" column="start_rating"/>
-		<result property="comment_reply" column="comment_reply"/>
-	</resultMap>
 </mapper>

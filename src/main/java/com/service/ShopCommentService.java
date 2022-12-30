@@ -6,7 +6,6 @@ import com.entity.Shop;
 import com.entity.ShopComment;
 import com.exceptions.ShopCommentOperationException;
 
-import java.util.List;
 
 public interface ShopCommentService {
 	/**

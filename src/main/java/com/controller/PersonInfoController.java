@@ -280,7 +280,6 @@ public class PersonInfoController {
 		return  modelMap;
 	}
 
-
 	@ApiOperation(value = "获取当前登录用户的信息")
 	@GetMapping("/getLoginInfo")
 	public Result getLoginInfo(Principal principal) {

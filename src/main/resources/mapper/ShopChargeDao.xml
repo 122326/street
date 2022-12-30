@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.ShopChargeDao">
+    <insert id="insertShopCharge" parameterType="com.entity.ShopCharge"
+            useGeneratedKeys="true" keyProperty="shopChargeId" keyColumn="shop_charge_id">
+		INSERT
+		INTO
+		tb_shop_charge(shop_id,order_id,user_id,charge_content,create_time)
+		VALUES
+		(#{shopId},#{orderId},#{userId},#{chargeContent},#{createTime})
+	</insert>
+
+	<insert id="insertChargeImg"
+			parameterType="com.entity.ChargeImg"
+			useGeneratedKeys="true" keyProperty="chargeImgId"
+			keyColumn="charge_img_id">
+		INSERT INTO
+		tb_charge_img(img_addr,shop_charge_id)
+		VALUES
+		(#{imgAddr},#{shopChargeId})
+	</insert>
+	<select id="queryShopChargeList2" resultType="com.entity.ShopCharge">
+		SELECT
+		shop_charge_id, shop_id, order_id, user_id, charge_content, charge_reply
+		FROM
+		tb_shop_charge
+		<where>
+			<if test="shopChargeCondition.userId != null">
+				and user_id = #{shopChargeCondition.userId}
+			</if>
+			<if test="shopChargeCondition.shopId != null">
+				and shop_id = #{shopChargeCondition.shopId}
+			</if>
+			<if test="shopChargeCondition.chargeContent != null">
+				and charge_content like '%${shopChargeCondition.chargeContent}%'
+			</if>
+			<if test="shopChargeCondition.chargeReply != null">
+				and charge_reply like '%${shopChargeCondition.chargeReply}%'
+			</if>
+		</where>
+	</select>
+</mapper>

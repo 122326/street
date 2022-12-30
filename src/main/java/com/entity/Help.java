@@ -7,8 +7,14 @@ import java.util.Date;
 
 public class Help {
 
+	/**
+	 * 帮助id 主键
+	 */
 	@ApiModelProperty(value = "帮助ID，创建时不填，修改信息时必填")
 	private Long helpId;
+	/**
+	 * 求助id
+	 */
 	@ApiModelProperty(value = "用户名", required = true)
 	private String userName;
 
@@ -17,27 +23,45 @@ public class Help {
 
 	@ApiModelProperty(value = "求助标题", required = true)
 	private String appealTitle;
+	/**
+	 * 帮助者用户id
+	 */
 	@ApiModelProperty(value = "帮助者用户id", hidden = true)
 	private Long userId;
-	 // 帮助状态 0求助用户未确定帮助对象，1已接受帮助， 2已完成，3已失效
-	@ApiModelProperty(value = "帮助状态 0求助用户未确定帮助对象，1已接受帮助， 2已完成，3已失效")
+	/**
+	 * 帮助状态 0求助用户未确定帮助对象，1已接受帮助， 2已完成，3已失效
+	 *
+	 */
+	@ApiModelProperty(value = "帮助状态 0求助用户未确定帮助对象，1已接受帮助， 2已完成，3已失效，4已禁止")
 	private Integer helpStatus;
-	//完成程度分，范围：0-5分整数
+	/**
+	 * 完成程度分，范围：0-5分整数
+	 */
 	@ApiModelProperty(value = "完成程度分，范围：0-5分整数")
 	private Integer completion;
-	//效率分，范围：0-5分整数
+	/**
+	 * 效率分，范围：0-5分整数
+	 */
 	@ApiModelProperty(value = "效率分，范围：0-5分整数")
 	private Integer efficiency;
-	//态度分，范围：0-5分整数
+	/**
+	 * 态度分，范围：0-5分整数
+	 */
 	@ApiModelProperty(value = "态度分，范围：0-5分整数")
 	private Integer attitude;
-	//之前的平均完成程度分，范围：0-5分保留一位小数
+	/**
+	 * 之前的平均完成程度分，范围：0-5分保留一位小数
+	 */
 	@ApiModelProperty(value = "之前的平均完成程度分，范围：0-5分保留一位小数", hidden = true)
 	private Float avgCompletion;
-	//之前的平均效率分，范围：0-5分保留一位小数
+	/**
+	 * 之前的平均效率分，范围：0-5分保留一位小数
+	 */
 	@ApiModelProperty(value = "之前的平均完成效率分，范围：0-5分保留一位小数", hidden = true)
 	private Float avgEfficiency;
-	//之前的平均态度分，范围：0-5分保留一位小数
+	/**
+	 * 之前的平均态度分，范围：0-5分保留一位小数
+	 */
 	@ApiModelProperty(value = "之前的平均完成态度分，范围：0-5分保留一位小数", hidden = true)
 	private Float avgAttitude;
 
@@ -48,12 +72,10 @@ public class Help {
 	private Long additionalCoin;
 
 	@ApiModelProperty(value = "失效时间", hidden = true)
-
-	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 	private Date endTime;
-	
-	/*@ApiModelProperty(value = "帮助者信息", hidden = true)
-	private PersonInfo personInfo;*/
+
+	@ApiModelProperty(value = "帮助者信息", hidden = true)
+	private PersonInfo personInfo;
 
 	@ApiModelProperty(value = "评论")
 	private String commentInfo;
@@ -186,14 +208,14 @@ public class Help {
 		this.endTime = endTime;
 	}
 
-	/*public PersonInfo getPersonInfo() {
+	public PersonInfo getPersonInfo() {
 		return personInfo;
 	}
 
 	public void setPersonInfo(PersonInfo personInfo) {
 		this.personInfo = personInfo;
 	}
-*/
+
 	@Override
 	public String toString() {
 		return "Help [helpId=" + helpId + ", appealId=" + appealId + ", appealTitle=" + appealTitle + ", userId="

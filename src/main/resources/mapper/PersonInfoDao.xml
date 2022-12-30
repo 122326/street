@@ -163,6 +163,11 @@
 		where user_id=#{userId}
 	</update>
 
+	<select id="getSouCoinSum" resultType="java.lang.Long">
+		SELECT SUM(sou_coin)
+		FROM tb_person_info
+	</select>
+
 	<resultMap id="personInfoMap" type="com.entity.PersonInfo">
 		<id property="userId"  column = "user_id"/>
 		<result property = "souCoin"  column = "sou_coin"/>

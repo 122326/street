@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.ServiceCollectDao">
+    <insert id="insertServiceCollect" parameterType="com.entity.ServiceCollect"
+            useGeneratedKeys="true" keyProperty="serviceCollectId" keyColumn="service_collect_id">
+        INSERT
+        INTO
+            tb_service_collect(service_id,user_id,create_time)
+        VALUES
+            (#{serviceId},#{userId},#{createTime})
+    </insert>
+
+    <update id="updateServiceCollect" parameterType="com.entity.ServiceCollect">
+        update tb_service_collect
+        <set>
+            <if test="isDelete!= null">is_delete=#{isDelete}</if>
+        </set>
+        where user_id=#{userId}
+        and service_id = #{serviceId}
+    </update>
+    <select id="queryByUserIdAndServiceId" resultType="com.entity.ServiceCollect">
+        SELECT
+            *
+        FROM
+            tb_service_collect
+        where
+            user_id = #{userId}
+          and service_id = #{serviceId}
+    </select>
+
+    <select id="getServiceCollectList" resultType="com.entity.ServiceCollect">
+        SELECT
+            *
+        FROM
+            tb_service_collect
+        where
+            user_id = #{userId}
+          and is_delete = 0
+    </select>
+
+    <select id="getCollectUsersByServiceId" resultType="com.vo.ServiceCollectLog">
+        SELECT
+        tb_service_collect.service_id,tb_service_collect.user_id,user_name,service_name,tb_service_collect.create_time,
+        tb_person_info.profile_img
+        FROM
+        tb_service_collect
+        INNER JOIN tb_service USING(service_id)
+        INNER JOIN tb_person_info on tb_service_collect.user_id = tb_person_info.user_id
+        <where>
+            <if test="serviceId != null">
+                tb_service_collect.service_id = #{serviceId}
+            </if>
+            AND tb_service_collect.is_delete = 0
+        </where>
+
+        ORDER BY tb_service_collect.create_time desc
+
+        LIMIT #{page}, #{rows}
+    </select>
+
+    <select id="getUsersByServiceId" resultType="com.vo.ServiceCollectLog">
+        SELECT
+        tb_service_collect.service_id,tb_service_collect.user_id,user_name,service_name,tb_service_collect.create_time,
+        tb_person_info.profile_img
+        FROM
+        tb_service_collect
+        INNER JOIN tb_service USING(service_id)
+        INNER JOIN tb_person_info on tb_service_collect.user_id = tb_person_info.user_id
+        <where>
+            <if test="serviceId != null">
+                tb_service_collect.service_id = #{serviceId}
+            </if>
+            AND tb_service_collect.is_delete = 0
+        </where>
+
+        ORDER BY tb_service_collect.create_time desc
+
+    </select>
+</mapper>

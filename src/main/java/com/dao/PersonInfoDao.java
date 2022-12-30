@@ -38,4 +38,5 @@ public interface PersonInfoDao extends BaseMapper<PersonInfo> {
 	int updatePersonInfo(PersonInfo personInfo);
 
 
+    Long getSouCoinSum();
 }

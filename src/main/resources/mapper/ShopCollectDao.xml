@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.ShopCollectDao">
+    <insert id="insertShopCollect" parameterType="com.entity.ShopCollect"
+            useGeneratedKeys="true" keyProperty="shopCollectId" keyColumn="shop_collect_id">
+        INSERT
+        INTO
+            tb_shop_collect(shop_id,user_id,create_time)
+        VALUES
+            (#{shopId},#{userId},#{createTime})
+    </insert>
+
+    <update id="updateShopCollect" parameterType="com.entity.ShopCollect">
+        update tb_shop_collect
+        <set>
+            <if test="isDelete!= null">is_delete=#{isDelete}</if>
+        </set>
+        where user_id=#{userId}
+        and shop_id = #{shopId}
+    </update>
+    <select id="queryByUserIdAndShopId" resultType="com.entity.ShopCollect">
+        SELECT
+        *
+        FROM
+        tb_shop_collect
+        where
+        user_id = #{userId}
+        and shop_id = #{shopId}
+    </select>
+
+    <select id="getShopCollectList" resultType="com.entity.ShopCollect">
+        SELECT
+            *
+        FROM
+            tb_shop_collect
+        where
+          user_id = #{userId}
+          and is_delete = 0
+    </select>
+
+    <select id="getCollectUsersByShopId" resultType="com.vo.ShopCollectLog">
+        SELECT
+        tb_shop_collect.shop_id,tb_shop_collect.user_id,user_name,shop_name,tb_shop_collect.create_time,
+        tb_person_info.profile_img
+        FROM
+        tb_shop_collect
+        INNER JOIN tb_shop USING(shop_id)
+        INNER JOIN tb_person_info on tb_shop_collect.user_id = tb_person_info.user_id
+        <where>
+            <if test="shopId != null">
+                tb_shop_collect.shop_id = #{shopId}
+            </if>
+        AND tb_shop_collect.is_delete = 0
+        </where>
+
+        ORDER BY tb_shop_collect.create_time desc
+        <if test="page != null and rows != null">
+            LIMIT #{page}, #{rows}
+        </if>
+
+    </select>
+
+</mapper>

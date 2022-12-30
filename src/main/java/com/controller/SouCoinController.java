@@ -1,9 +1,7 @@
 package com.controller;
 
-import com.entity.Soucoin;
 import com.service.SouCoinService;
-import com.service.UsersInformService;
-import com.util.HttpServletRequestUtil;
+import com.suppercontroller.SoucoinSupperController;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -12,10 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,34 +23,54 @@ public class SouCoinController {
     @Autowired
     private SouCoinService souCoinService;
 
+
     @Autowired
-    private UsersInformService usersInformService;
+    private SoucoinSupperController soucoinSupperController;
 
     @Value("${exchange-rate}")
     private Double exchangeRate;
 
-
+    //修改搜币数量
+    @PostMapping("/update")
+    @ApiOperation("根据userID修改搜币数量，不会记录到搜币流水中")
+    @ApiImplicitParams({
+            @ApiImplicitParam(paramType = "query", name = "userID", value = "用户ID", required = true, dataType = "Integer", example = "3"),
+            @ApiImplicitParam(paramType = "query", name = "souCoin", value = "修改的数量（可正可负）", required = true, dataType = "Integer", example = "-20"),
+            @ApiImplicitParam(paramType = "query", name = "token", value = "用于身份认证的令牌", required = true, dataType = "String")})
+    private Map<String, Object> changeSouCoin(@RequestBody Map<String, Object> params) {
+        Map<String, Object> modelMap = new HashMap<>();
+        Integer userID = (Integer) params.get("userID");
+        Integer souCoin = (Integer) params.get("souCoin");
+        if (userID != null) {
+            souCoinService.changeSouCoin(userID, souCoin);
+            modelMap.put("success", true);
+        } else {
+            modelMap.put("success", false);
+            modelMap.put("errMsg", "用户ID不能为空");
+        }
+        return modelMap;
+    }
 
     //充值搜币
-    @PostMapping("/topupsoucoin")
+    @PostMapping("/top-up-soucoin")
     @ApiOperation("充值搜币，会记录到搜币流水中")
     @ApiImplicitParams({
-            @ApiImplicitParam(paramType = "query", name = "userID", value = "用户ID", required = true, dataType = "long", example = "3"),
+            @ApiImplicitParam(paramType = "query", name = "userID", value = "用户ID", required = true, dataType = "Integer", example = "3"),
             @ApiImplicitParam(paramType = "query", name = "souCoin", value = "充值的数量", required = true, dataType = "Integer", example = "20"),
-            @ApiImplicitParam(paramType = "query", name = "method", value = "充值或提现", required = true, dataType = "String", example = "微信支付"),
+            @ApiImplicitParam(paramType = "query", name = "method", value = "充值的方式", required = true, dataType = "String", example = "微信支付"),
             @ApiImplicitParam(paramType = "query", name = "bankName", value = "充值的银行", required = true, dataType = "String", example = "工商银行"),
             @ApiImplicitParam(paramType = "query", name = "cardNumber", value = "充值的银行卡号", required = true, dataType = "String", example = "612345678901222"),
-            })
+            @ApiImplicitParam(paramType = "query", name = "token", value = "用于身份认证的令牌", required = true, dataType = "String")})
     private Map<String, Object> topUpSouCoin(@RequestBody Map<String, Object> params) {
         Map<String, Object> modelMap = new HashMap<>();
         Integer souCoin = (Integer) params.get("souCoin");
         // 检查充值数量是否为正
         if (souCoin <= 0) {
             modelMap.put("success", false);
-            modelMap.put("errMsg", "充值数量错误！");
+            modelMap.put("errMsg", "身份验证失败！");
             return modelMap;
         }
-        long userID = (long) params.get("userID");
+        Integer userID = (Integer) params.get("userID");
         String method = (String) params.get("method");
         String bankName = (String) params.get("bankName");
         String cardNumber = (String) params.get("cardNumber");
@@ -71,15 +86,15 @@ public class SouCoinController {
     }
 
     //搜币提现
-    @PostMapping("/withdrawalsoucoin")
+    @PostMapping("/withdrawal-soucoin")
     @ApiOperation("搜币提现，会记录到搜币流水中")
     @ApiImplicitParams({
-            @ApiImplicitParam(paramType = "query", name = "userID", value = "用户ID", required = true, dataType = "long", example = "3"),
+            @ApiImplicitParam(paramType = "query", name = "userID", value = "用户ID", required = true, dataType = "Integer", example = "3"),
             @ApiImplicitParam(paramType = "query", name = "souCoin", value = "提现的数量", required = true, dataType = "Integer", example = "20"),
-            @ApiImplicitParam(paramType = "query", name = "method", value = "充值或提现", required = true, dataType = "String", example = "微信支付"),
+            @ApiImplicitParam(paramType = "query", name = "method", value = "提现的方式", required = true, dataType = "String", example = "微信支付"),
             @ApiImplicitParam(paramType = "query", name = "bankName", value = "提现的银行", required = true, dataType = "String", example = "工商银行"),
             @ApiImplicitParam(paramType = "query", name = "cardNumber", value = "提现的银行卡号", required = true, dataType = "String", example = "612345678901222"),
-            })
+            @ApiImplicitParam(paramType = "query", name = "token", value = "用于身份认证的令牌", required = true, dataType = "String")})
     private Map<String, Object> withdrawalSouCoin(@RequestBody Map<String, Object> params) {
         Map<String, Object> modelMap = new HashMap<>();
         Integer souCoin = (Integer) params.get("souCoin");
@@ -89,7 +104,7 @@ public class SouCoinController {
             modelMap.put("errMsg", "身份验证失败！");
             return modelMap;
         }
-        long userID = (long) params.get("userID");
+        Integer userID = (Integer) params.get("userID");
         String method = (String) params.get("method");
         String bankName = (String) params.get("bankName");
         String cardNumber = (String) params.get("cardNumber");
@@ -108,39 +123,28 @@ public class SouCoinController {
     @PostMapping("/listlogs")
     @ApiOperation("根据userID列出搜币流水")
     @ApiImplicitParams({
-            @ApiImplicitParam(paramType = "query", name = "userId", value = "用户ID", required = true, dataType = "long", example = "3"),
-            @ApiImplicitParam(paramType = "query", name = "pageIndex", value = "页码", required = true, dataType = "Integer", example = "1"),
-            @ApiImplicitParam(paramType = "query", name = "pageSize", value = "页面大小", required = true, dataType = "Integer", example = "20"),
-            @ApiImplicitParam(paramType = "query", name = "sort", value = "按照什么来排序", required = false, dataType = "String", example = "time"),
-            @ApiImplicitParam(paramType = "query", name = "order", value = "排序方式", required = false, dataType = "String", example = "DESC"),
-            @ApiImplicitParam(paramType = "query", name = "starttime", value = "时间区间（开始）", required = false, dataType = "Date"),
-            @ApiImplicitParam(paramType = "query", name = "endtime", value = "时间区间（截止）", required = false, dataType = "Date")})
-    private Map<String, Object> listlogs(HttpServletRequest request) {
+            @ApiImplicitParam(paramType = "query", name = "userID", value = "用户ID", required = true, dataType = "Integer", example = "3"),
+            @ApiImplicitParam(paramType = "query", name = "page", value = "当前处于第几页", required = true, dataType = "Integer", example = "1"),
+            @ApiImplicitParam(paramType = "query", name = "rows", value = "每一页显示多少条数据", required = true, dataType = "String", example = "20"),
+            @ApiImplicitParam(paramType = "query", name = "sort", value = "按照什么来排序", required = true, dataType = "String", example = "time"),
+            @ApiImplicitParam(paramType = "query", name = "order", value = "排序方式", required = true, dataType = "String", example = "DESC")})
+    private Map<String, Object> listlogs(@RequestBody Map<String, Object> params) {
         Map<String, Object> modelMap = new HashMap<>();
-        long userId = HttpServletRequestUtil.getLong(request,"userId");
-        Integer pageIndex = HttpServletRequestUtil.getInteger(request,"pageIndex");
-        Integer pageSize = HttpServletRequestUtil.getInteger(request,"pageSize");
-        String sort = HttpServletRequestUtil.getString(request,"sort");
-        String order = HttpServletRequestUtil.getString(request,"order");
-        Date starttime = HttpServletRequestUtil.getDate(request,"starttime");
-        Date endtime = HttpServletRequestUtil.getDate(request,"endtime");
-        int rowsIndex=(pageIndex-1)*pageSize;
-        if (pageIndex>0&&pageSize>0) {
-            if (userId >0) {
-                List<Soucoin> sc= souCoinService.listLogs(userId, starttime, endtime, rowsIndex, pageSize, sort, order);
-                modelMap.put("success", true);
-                modelMap.put("soucoinlist",sc);
-            } else {
-                modelMap.put("success", false);
-                modelMap.put("errMsg", "请输入合理的userId!");
-            }
-        }else{
+        Integer userID = (Integer) params.get("userID");
+        Integer page = (Integer) params.get("page");
+        Integer rows = (Integer) params.get("rows");
+        String sort = (String) params.get("sort");
+        String order = (String) params.get("order");
+        if (userID != null) {
+            // 借用管理页面的控制器中已经写好的方法来使用
+            modelMap = soucoinSupperController.listSouCoinLogs(userID, null, null, null, page, rows, sort, order);
+            modelMap.put("success", true);
+        } else {
             modelMap.put("success", false);
-            modelMap.put("errMsg", "请输入正确分页信息！");
+            modelMap.put("errMsg", "用户ID不能为空");
         }
         return modelMap;
     }
-
 
     // 获得人民币搜币的兑换比例，1人民币能兑换多少搜币
     @GetMapping("/get-exchange-rate")
@@ -148,7 +152,5 @@ public class SouCoinController {
     private Double getExchangeRate() {
         return this.exchangeRate;
     }
-
-
 
 }

@@ -27,6 +27,11 @@ public class PathUtil {
         return imagePath.replace("/", seperator);
     }
 
+    public static String getChargeImgPath(long chargeId) {
+        String imagePath = "/upload/images/item/shop/chargeImg/" + chargeId + "/";
+        return imagePath.replace("/", seperator);
+    }
+
     public static String getShopBusinessLicenseImgPath(long shopId) {
         String imagePath = "/upload/images/item/shop/businessLicenseImg/" + shopId + "/";
         return imagePath.replace("/", seperator);

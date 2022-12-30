@@ -1,85 +1,130 @@
 package com.service;
 
 
+import com.dto.AppealExecution;
+import com.dto.AppealImgExecution;
 import com.dto.ImageHolder;
 import com.entity.Appeal;
 import com.entity.AppealImg;
+import com.exceptions.AppealOperationException;
 
 
 import java.util.List;
 
 public interface AppealService {
 
+	public AppealExecution getAppealList()
+			throws AppealOperationException;
 	/**
 	 * 根据appealCondition返回相应求助列表
 	 *
+	 * @param appealCondition
+	 * @param pageIndex
+	 * @param pageSize
+	 * @return
 	 */
-	List<Appeal> getAppealList(
-			Appeal appealCondition, int pageIndex, int pageSize,
-			String sort, String order);
+	public AppealExecution getAppealListFY(Appeal appealCondition, int pageIndex, int pageSize,String sort,String order)
+			throws AppealOperationException;
 
 	/**
 	 * 根据经纬范围返回附近求助列表
 	 *
+	 * @param maxlat
+	 * @param minlat
+	 * @param maxlng
+	 * @param minlng
+	 * @return
 	 */
-	List<Appeal> getNearbyAppealList(float maxlat, float minlat, float maxlng, float minlng,
-                                               String appealTitle);
+	public AppealExecution getNearbyAppealList(float maxlat, float minlat, float maxlng, float minlng,
+											   String appealTitle);
 
 	/**
 	 * 通过求助Id获取求助信息
 	 *
+	 * @param appealId
+	 * @return
 	 */
-	Appeal getByAppealId(Long appealId);
+	Appeal getByAppealId(Long appealId) throws AppealOperationException;
 
 	/**
 	 * 更新求助信息，不包括对图片的处理
 	 *
+	 * @param appeal
+	 * @return
+	 * @throws AppealOperationException
 	 */
-	Appeal modifyAppeal(Appeal appeal) ;
+	AppealExecution modifyAppeal(Appeal appeal) throws AppealOperationException;
 
 	/**
 	 * 上传求助图片
 	 *
+	 * @param appealId
+	 * @param appealImg
+	 * @return
+	 * @throws AppealOperationException
 	 */
-	AppealImg uploadImg(Long appealId, ImageHolder appealImg, Long userId);
+	AppealExecution uploadImg(Long appealId, ImageHolder appealImg, Long userId) throws AppealOperationException;
 
 	/**
 	 * 添加求助信息，不包括对图片的处理
 	 *
+	 * @param appeal
+	 * @return
+	 * @throws AppealOperationException
 	 */
-	Appeal addAppeal(Appeal appeal);
+	AppealExecution addAppeal(Appeal appeal) throws AppealOperationException;
 
 	/**
 	 * 求助完成之后的相关操作
 	 *
+	 * @param appealId
+	 * @param helpId
+	 * @param appealUserId
+	 * @return
 	 */
-	Appeal completeAppeal(Long appealId, Long helpId, Long appealUserId);
+	AppealExecution completeAppeal(Long appealId, Long helpId, Long appealUserId) throws AppealOperationException;
 
 	/**
 	 * 撤销求助
 	 *
+	 * @param userId
+	 * @param appealId
+	 * @throws AppealOperationException
 	 */
+	AppealExecution cancelAppeal(Long userId, Long appealId) throws AppealOperationException;
 
-	void cancelAppeal(Long userId, Long appealId);
-
+	/**
+	 * 使求助失效
+	 *
+	 * @param userId
+	 * @param appealId
+	 * @throws AppealOperationException
+	 */
+	AppealExecution disableAppeal(Long userId, Long appealId) throws AppealOperationException;
 
 	/**
 	 * 分页获取求助图片
+	 *
+	 * @param pageIndex
+	 * @param pageSize
+	 * @return
 	 */
-	List<AppealImg> getAppealImgList(AppealImg appealImg,
-							 int pageIndex, int pageSize, String sort, String order);
+	AppealImgExecution getAppealImgList(AppealImg appealImg, int pageIndex, int pageSize, String sort, String order);
 
 	/**
 	 * 根据求助图片Id删除求助图片
 	 *
+	 * @param appealImgId
+	 * @throws AppealOperationException
 	 */
-	void delAppealImg(Long appealImgId);
+	AppealImgExecution delAppealImg(Long appealImgId) throws AppealOperationException;
 
 	/**
 	 * 添加求助图片
 	 *
+	 * @param appealId
+	 * @param appealImgHolder
+	 * @throws AppealOperationException
 	 */
-	AppealImg createAppealImg(Long appealId, ImageHolder appealImgHolder) ;
-
-
+	AppealImgExecution createAppealImg(Long appealId, ImageHolder appealImgHolder) throws AppealOperationException;
 }

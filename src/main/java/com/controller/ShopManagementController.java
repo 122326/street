@@ -346,5 +346,4 @@ public class ShopManagementController {
 		return modelMap;
 	}
 
-
 }

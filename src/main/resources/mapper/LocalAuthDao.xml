@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.dao.LocalAuthDao">
+	<select id="queryLocalByUserName" resultType="com.entity.LocalAuth">
+		SELECT
+			local_auth_id,
+			user_name,
+			password,
+			create_time,
+			last_edit_time,
+			user_id
+		FROM tb_local_auth
+		WHERE user_name=#{userName}
+	</select>
+	<select id="queryUserName" resultType="java.lang.String">
+		SELECT
+		user_name
+		FROM tb_local_auth
+	</select>
+	<select id="queryLocalByUserNameAndPwd"
+		resultType="com.entity.LocalAuth">
+		SELECT
+		local_auth_id,
+		user_name,
+		password,
+		create_time,
+		last_edit_time,
+		user_id
+		FROM tb_local_auth
+		WHERE user_name=#{userName}
+		AND password=#{password}
+	</select>
+	<select id="querySuperByUserNameAndPwd"
+			resultType="com.entity.LocalAuth">
+		SELECT
+		local_auth_id,
+		user_name,
+		password,
+		create_time,
+		last_edit_time,
+		user_id
+		FROM tb_super_auth
+		WHERE user_name=#{userName}
+		AND password=#{password}
+	</select>
+	<select id="queryLocalByUserId"
+		resultType="com.entity.LocalAuth">
+		SELECT
+		local_auth_id,
+		user_name,
+		password,
+		create_time,
+		last_edit_time,
+		user_id
+		FROM tb_local_auth
+		WHERE user_id=#{userId}
+	</select>
+	<select id="queryLocalCount" resultType="int">
+		SELECT
+		count(1)
+		FROM
+		tb_local_auth
+		<where>
+			<!-- 写like语句的时候 一般都会写成 like '% %' 在mybatis里面写就是应该是 like '%${name} %' 而不是
+				'%#{name} %' ${name} 是不带单引号的，而#{name} 是带单引号的 -->
+			<if
+					test="LocalAuthCondition.userName != null">
+				and user_name like '%${LocalAuthCondition.userName}%'
+			</if>
+			<if
+					test="LocalAuthCondition.userId != null">
+				and user_id = #{LocalAuthCondition.userId}
+			</if>
+			<if
+					test="LocalAuthCondition.localAuthId != null">
+				and local_auth_id = #{LocalAuthCondition.localAuthId}
+			</if>
+
+		</where>
+	</select>
+	<select id="queryLocalList"
+		resultType="com.entity.LocalAuth">
+		SELECT
+		local_auth_id,
+		user_name,
+		password,
+		create_time,
+		last_edit_time,
+		user_id
+		FROM tb_local_auth
+		<where>
+			<!-- 写like语句的时候 一般都会写成 like '% %' 在mybatis里面写就是应该是 like '%${name} %' 而不是
+				'%#{name} %' ${name} 是不带单引号的，而#{name} 是带单引号的 -->
+			<if
+					test="LocalAuthCondition.userName != null">
+				and user_name like '%${LocalAuthCondition.userName}%'
+			</if>
+			<if
+					test="LocalAuthCondition.userId != null">
+				and user_id = #{LocalAuthCondition.userId}
+			</if>
+			<if
+					test="LocalAuthCondition.localAuthId != null">
+				and local_auth_id = #{LocalAuthCondition.localAuthId}
+			</if>
+
+		</where>
+		<if test="sort != null and order != null">
+			ORDER BY ${sort} ${order}
+		</if>
+		LIMIT #{rowIndex},#{pageSize};
+	</select>
+	<insert id="insertLocalAuth"
+		parameterType="com.entity.LocalAuth"
+		useGeneratedKeys="true" keyProperty="localAuthId"
+		keyColumn="local_auth_id">
+		INSERT
+		INTO
+		tb_local_auth(user_name,password,user_id,create_time,last_edit_time)
+		VALUES
+		(#{userName},#{password},#{userId},#{createTime},#{lastEditTime})
+	</insert>
+	<update id="updateLocalAuth">
+		update tb_local_auth
+		<set>
+			<if test="newPassword != null">password=#{newPassword},</if>
+			<if test="lastEditTime != null">last_edit_time=#{lastEditTime}</if>
+		</set>
+		where user_id=#{userId}
+		AND user_name=#{userName}
+		AND
+		password=#{password}
+	</update>
+</mapper>

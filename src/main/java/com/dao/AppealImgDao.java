@@ -9,34 +9,63 @@ import java.util.List;
 
 @Mapper
 public interface AppealImgDao {
-	/**
-	 * 根据查询条件分页返回求助图片
-	 *
-	 */
-	List<AppealImg> queryAppealImgList(@Param("appealImgCondition") AppealImg appealImgCondition,
-									   @Param("rowIndex") int rowIndex, @Param("pageSize") int pageSize,
-									   @Param("sort") String sort, @Param("order") String order);
 
 	/**
-	 * 根据求助图片Id获取求助图片
+	 * 添加求助详情图片
 	 *
+	 * @param appealImg
+	 * @return
+	 */
+	int insertAppealImg(AppealImg appealImg);
+
+	/**
+	 * 删除指定求助下的所有详情图
+	 *
+	 * @param appealId
+	 * @return
+	 */
+	int deleteAppealImgByAppealId(long appealId);
+
+	/**
+	 * 获取求助图片
+	 *
+	 * @param appealImgId
+	 * @return
 	 */
 	AppealImg getAppealImg(long appealImgId);
-
 	/**
-	 * 根据求助Id获取求助图片列表
+	 * 根据求助id获取求助图片
+	 *
+	 * @param appealId
+	 * @return
 	 */
 	List<AppealImg> getAppealImgList(long appealId);
 
 	/**
-	 * 添加求助详情图片
+	 * 删除指定求助图片
+	 *
+	 * @param appealImgId
+	 * @return
 	 */
-	void insertAppealImg(AppealImg appealImg);
+	int deleteAppealImgById(long appealImgId);
 
 	/**
-	 * 删除求助图片
+	 * 获取求助图片总数
 	 *
+	 * @param appealImgCondition
+	 * @return
 	 */
-	void deleteAppealImgById(long appealImgId);
+	int queryAppealImgCount(@Param("appealImgCondition") AppealImg appealImgCondition);
 
+	/**
+	 * 分页查询求助图片
+	 *
+	 * @param appealImgCondition
+	 * @param rowIndex
+	 * @param pageSize
+	 * @return
+	 */
+	List<AppealImg> queryAppealImgList(@Param("appealImgCondition") AppealImg appealImgCondition,
+									   @Param("rowIndex") int rowIndex, @Param("pageSize") int pageSize
+			, @Param("sort") String sort, @Param("order") String order);
 }

@@ -3,7 +3,7 @@
 	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.dao.HelpDao">
-	<select id="queryHelpListFY" resultMap="helpMap">
+	<select id="queryHelpListFY" resultType="com.entity.Help">
 		SELECT
 		user_name,
 		help_id,
@@ -66,8 +66,7 @@
 		</if>
 		LIMIT #{rowIndex},#{pageSize};
 	</select>
-
-	<select id="queryHelpList" resultMap="helpMap">
+	<select id="queryHelpList" resultType="com.entity.Help">
 		SELECT
 		help_id,
 		appeal_id,
@@ -97,9 +96,53 @@
 			</if>
 		</where>
 	</select>
-
-	<select id="queryByHelpId" resultMap="helpMap"
-		parameterType="long">
+	<select id="queryHelpCount" resultType="int">
+		SELECT
+		count(1)
+		FROM
+		tb_help
+		<where>
+			<if test="helpCondition.appealId != null">
+				and appeal_id = #{helpCondition.appealId}
+			</if>
+			<if test="helpCondition.userId != null">
+				and user_id = #{helpCondition.userId}
+			</if>
+			<if test="helpCondition.helpStatus != null">
+				and
+				<if test="helpCondition.helpStatus == 1">
+					(
+				</if>
+				help_status = #{helpCondition.helpStatus}
+				<if test="helpCondition.helpStatus == 1">
+					or help_status = 0)
+				</if>
+			</if>
+			<if test="startTime != null and endTime != null">
+				and (end_time &gt;= #{startTime} and end_time &lt;=
+				#{endTime})
+			</if>
+			<if test="helpCondition.additionalCoin != null">
+				and additional_coin = #{helpCondition.additionalCoin}
+			</if>
+			<if test="helpCondition.allCoin != null">
+				and all_coin = #{helpCondition.allCoin}
+			</if>
+			<if test="helpCondition.helpId != null">
+				and help_id = #{helpCondition.helpId}
+			</if>
+			<if
+					test="helpCondition.appealTitle != null">
+				and appeal_title like '%${helpCondition.appealTitle}%'
+			</if>
+			<if
+					test="helpCondition.commentInfo != null">
+				and comment_info like '%${helpCondition.commentInfo}%'
+			</if>
+		</where>
+	</select>
+	<select id="queryByHelpId" resultType="com.entity.Help"
+			parameterType="long">
 		SELECT
 		help_id,
 		user_id,
@@ -122,7 +165,7 @@
 		help_id=#{helpId}
 	</select>
 	<insert id="insertHelp" parameterType="com.entity.Help"
-		useGeneratedKeys="true" keyProperty="helpId" keyColumn="help_id">
+			useGeneratedKeys="true" keyProperty="helpId" keyColumn="help_id">
 		INSERT
 		INTO
 		tb_help(
@@ -144,7 +187,6 @@
 		(#{appealId},#{appealTitle},#{userId},#{helpStatus},#{completion},
 		#{efficiency},#{attitude},#{avgCompletion},#{avgEfficiency},#{avgAttitude},#{allCoin},#{additionalCoin},#{endTime},#{commentInfo})
 	</insert>
-
 	<update id="updateHelp" parameterType="com.entity.Help">
 		update tb_help
 		<set>
@@ -158,19 +200,4 @@
 		</set>
 		where help_id=#{helpId}
 	</update>
-
-	<resultMap id="helpMap" type="com.entity.Help">
-		<id property="helpId" column="help_id"/>
-		<result property="appealId" column="appeal_id"/>
-		<result property="appealTitle" column="appeal_title"/>
-		<result property="userId" column="user_id"/>
-		<result property="helpStatus" column="help_status"/>
-		<result property="avgCompletion" column="avg_completion"/>
-		<result property="avgEfficiency" column="avg_efficiency"/>
-		<result property="avgAttitude" column="avg_attitude"/>
-		<result property="allCoin" column="all_coin"/>
-		<result property="additionalCoin" column="additional_coin"/>
-		<result property="endTime" column="end_time"/>
-		<result property="commentInfo" column="comment_info"/>
-	</resultMap>
 </mapper>

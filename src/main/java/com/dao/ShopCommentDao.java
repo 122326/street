@@ -9,52 +9,81 @@ import java.util.List;
 @Mapper
 public interface ShopCommentDao {
 	/**
-	 * 根据查询条件分页返回评价信息
-	 * 可输入的条件有：店铺id，用户id,
+	 * 分页查询服务，可输入的条件有：店铺id，用户id,
 	 *
-	 * @param rowIndex 从第几行开始取数据
-	 * @param pageSize 返回的条数
+	 * @param shopCommentCondition
+	 * @param rowIndex
+	 *            从第几行开始取数据
+	 * @param pageSize
+	 *            返回的条数
+	 * @return
 	 */
-	List<ShopComment> queryShopCommentList(@Param("shopCommentCondition") ShopComment shopCommentCondition, @Param("rowIndex") int rowIndex,
-                                                  @Param("pageSize") int pageSize, @Param("sort") String sort, @Param("order") String order);
-	List<ShopComment> queryShopCommentList2(@Param("shopCommentCondition") ShopComment shopCommentCondition);
-
+	public List<ShopComment> queryShopCommentList(@Param("shopCommentCondition")ShopComment shopCommentCondition, @Param("rowIndex") int rowIndex,
+												  @Param("pageSize") int pageSize, @Param("sort") String sort, @Param("order") String order);
+	public List<ShopComment> queryShopCommentList2(@Param("shopCommentCondition")ShopComment shopCommentCondition);
 	/**
-	 * 返回星级评分平均分
+	 * 返回queryShopCommentList总数
 	 *
+	 * @param shopCommentCondition
+	 * @return
 	 */
-	float queryAvgStarRating(long shopId);
-
+	public int queryShopCommentCount(@Param("shopCommentCondition")ShopComment shopCommentCondition);
 	/**
 	 * 返回服务评分平均分
 	 *
+	 * @param shopId
+	 * @return
 	 */
-	float queryAvgServiceRating(long shopId);
-	
+	public float queryAvgStarRating(long shopId);
+	/**
+	 * 返回星级评分平均分
+	 *
+	 * @param shopId
+	 * @return
+	 */
+	public float queryAvgServiceRating(long shopId);
+
 	/**
 	 * 通过shopCommentId查询评论
+	 * @param shopCommentId
+	 * @return
 	 */
-	ShopComment queryByShopCommentId(long shopCommentId);
-
+	public ShopComment queryByShopCommentId(long shopCommentId);
 	/**
 	 * 通过orderId查询评论
+	 * @param orderId
+	 * @return
 	 */
-	ShopComment queryByOrderId(long orderId);
-
-
+	public ShopComment queryByOrderId(long orderId);
+	/**
+	 * 通过shop id查询评论
+	 * @param shopId
+	 * @return
+	 */
+//	public List<ShopComment> queryByShopId(long shopId);
 	/**
 	 * 添加评论
+	 * @param shopCommentInfo
+	 * @return
 	 */
-	void insertShopComment(ShopComment shopCommentInfo);
+	public int  insertShopComment(ShopComment shopCommentInfo);
+	/**
+	 * 批量添加评论
+	 * @return
+	 */
+	public int  insertShopCommentInfo(List<ShopComment> shopCommentList);
 
 	/**
 	 * 更新评论信息
+	 * @param shopCommentInfo
+	 * @return
 	 */
-	void updateShopComment(ShopComment shopCommentInfo);
+	public int updateShopComment(ShopComment shopCommentInfo);
 
 	/**
 	 * 删除评论信息
+	 * @return
 	 */
-	void deleteShopComment(long shopCommentId);
+	public int deleteShopComment(long shopCommentId);
 
 }

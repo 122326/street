@@ -4,11 +4,16 @@ import com.dao.AppealDao;
 import com.dao.AppealImgDao;
 import com.dao.HelpDao;
 import com.dao.PersonInfoDao;
+import com.dto.AppealExecution;
+import com.dto.AppealImgExecution;
 import com.dto.ImageHolder;
 import com.entity.Appeal;
 import com.entity.AppealImg;
 import com.entity.Help;
 import com.entity.PersonInfo;
+import com.enums.AppealStateEnum;
+import com.exceptions.AppealOperationException;
+import com.exceptions.ShopOperationException;
 import com.service.AppealService;
 import com.util.ImageUtil;
 import com.util.PageCalculator;
@@ -32,23 +37,48 @@ public class AppealServiceImpl implements AppealService {
 	@Autowired
 	private HelpDao helpDao;
 
-
 	@Override
-	@Transactional
-	public List<Appeal> getAppealList(Appeal appealCondition, int pageIndex, int pageSize, String sort, String order)
-	{
-		// 将页码转换成行码
-		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
-		return appealDao.queryAppealListFY(appealCondition, rowIndex, pageSize,sort,order);
+	public AppealExecution getAppealList() throws AppealOperationException {
+		List<Appeal> appealList = appealDao.queryAppealList(new Appeal());
+		int count = appealDao.queryAppealCount(new Appeal());
+		AppealExecution ae = new AppealExecution();
+		if (appealList != null) {
+			ae.setAppealList(appealList);
+			ae.setCount(count);
+			ae.setState(AppealStateEnum.SUCCESS.getState());
+		} else {
+			ae.setState(AppealStateEnum.INNER_ERROR.getState());
+		}
+		return ae;
 	}
 
 	@Override
-	public List<Appeal> getNearbyAppealList(float maxlat, float minlat, float maxlng, float minlng,
-			String appealTitle) {
+	@Transactional
+	public AppealExecution getAppealListFY(Appeal appealCondition, int pageIndex, int pageSize,String sort,String order)
+			throws AppealOperationException {
+		// 将页码转换成行码
+		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
+		List<Appeal> appealList = appealDao.queryAppealListFY(appealCondition, rowIndex, pageSize,sort,order);
+		// 依据相同的查询条件，返回求助总数
+		int count = appealDao.queryAppealCount(appealCondition);
+		AppealExecution ae = new AppealExecution();
+		if (appealList != null) {
+			ae.setAppealList(appealList);
+			ae.setCount(count);
+			ae.setState(AppealStateEnum.SUCCESS.getState());
+		} else {
+			ae.setState(AppealStateEnum.INNER_ERROR.getState());
+		}
+		return ae;
+	}
+
+	@Override
+	public AppealExecution getNearbyAppealList(float maxlat, float minlat, float maxlng, float minlng,
+											   String appealTitle) {
 		List<Appeal> appealList = appealDao.queryNearbyAppealList(maxlat, minlat, maxlng, minlng, appealTitle);
+		AppealExecution ae = new AppealExecution();
 		if (appealList != null) {
 			Date today = new Date();
-			//调用迭代器访问列表
 			Iterator<Appeal> iter = appealList.iterator();
 			while (iter.hasNext()) {
 				Appeal value = iter.next();
@@ -58,26 +88,42 @@ public class AppealServiceImpl implements AppealService {
 					iter.remove();
 				}
 			}
+			ae.setAppealList(appealList);
+			ae.setCount(appealList.size());
+		} else {
+			ae.setState(AppealStateEnum.INNER_ERROR.getState());
 		}
-		return appealList;
+		return ae;
 	}
 
 	@Override
-	public Appeal getByAppealId(Long appealId){
+	public Appeal getByAppealId(Long appealId) throws AppealOperationException {
 		Appeal appeal = appealDao.queryByAppealId(appealId);
+		if (appeal == null) {
+			throw new AppealOperationException("getByAppealId error:" + "appealId无效");
+		}
 		return appeal;
 	}
 
 	@Override
-	public AppealImg uploadImg(Long appealId, ImageHolder appealImg, Long userId)
-	{
-		Appeal appeal = appealDao.queryByAppealId(appealId);
-		if (appealImg != null && appealImg.getImage() != null && appealImg.getImageName() != null
-					&& !"".equals(appealImg.getImageName())) {
-			addAppealImg(appealId, appealImg);
+	public AppealExecution uploadImg(Long appealId, ImageHolder appealImg, Long userId)
+			throws AppealOperationException {
+		if (appealId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_APPEALID);
 		}
-		AppealImg aImg=appealImgDao.getAppealImg(appealId);
-		return aImg;
+		Appeal appeal = appealDao.queryByAppealId(appealId);
+		if (appeal.getUserId() != userId) {
+			return new AppealExecution(AppealStateEnum.NOT_USER_APPEAL);
+		}
+		try {
+			if (appealImg != null && appealImg.getImage() != null && appealImg.getImageName() != null
+					&& !"".equals(appealImg.getImageName())) {
+				addAppealImg(appealId, appealImg);
+			}
+		} catch (Exception e) {
+			throw new AppealOperationException("uploadAppealImg error:" + e.toString());
+		}
+		return new AppealExecution(AppealStateEnum.SUCCESS);
 	}
 
 	private void addAppealImg(long appealId, ImageHolder appealImgHolder) {
@@ -89,92 +135,263 @@ public class AppealServiceImpl implements AppealService {
 		appealImg.setImgAddr(imgAddr);
 		appealImg.setAppealId(appealId);
 		appealImg.setCreateTime(new Date());
-		appealImgDao.insertAppealImg(appealImg);
-	}
-
-	@Override
-	public Appeal addAppeal(Appeal appeal) {
-		Long userId = appeal.getUserId();
-		PersonInfo personInfo = personInfoDao.queryPersonInfoByUserId(userId);
-		Long souCoin = personInfo.getSouCoin();
-		// 给求助信息赋初始值
-		appeal.setAppealStatus(0);
-		// 添加求助信息
-		appealDao.insertAppeal(appeal);
-		return appeal;
-	}
-
-	@Override
-	public Appeal modifyAppeal(Appeal appeal){
-		appealDao.updateAppeal(appeal);
-		return appeal;
-	}
-
-	@Override
-	@Transactional
-	public Appeal completeAppeal(Long appealId, Long helpId, Long appealUserId)
-	{
-		Long souCoin = 0l;
-		Appeal appeal = appealDao.queryByAppealId(appealId);
-		souCoin = appeal.getSouCoin();
-		PersonInfo appealPersonInfo = personInfoDao.queryPersonInfoByUserId(appealUserId);
-		Long appealerSouCoin = appealPersonInfo.getSouCoin();
-		Help help = helpDao.queryByHelpId(helpId);
-		Long helpUserId = help.getUserId();
-		PersonInfo helpPersonInfo = personInfoDao.queryPersonInfoByUserId(helpUserId);
-		appealPersonInfo.setSouCoin(appealerSouCoin - souCoin);
-		personInfoDao.updatePersonInfo(appealPersonInfo);
-		Long helperSouCoin = helpPersonInfo.getSouCoin();
-		helpPersonInfo.setSouCoin(helperSouCoin + souCoin);
-		personInfoDao.updatePersonInfo(helpPersonInfo);
-		appeal.setAppealStatus(2);
-		appealDao.updateAppeal(appeal);
-		help.setHelpStatus(2);
-		help.setAllCoin(souCoin);
-		helpDao.updateHelp(help);
-		return appeal;
-	}
-
-	@Override
-	public void cancelAppeal(Long userId, Long appealId) {
-		Appeal appeal = appealDao.queryByAppealId(appealId);
-		appeal.setAppealStatus(3);
-		appealDao.updateAppeal(appeal);
-	}
-
-
-	@Override
-	public List<AppealImg> getAppealImgList(AppealImg appealImg, int pageIndex, int pageSize, String sort, String order) {
-		// 将页码转换成行码
-		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
-		// 依据查询条件，调用dao层返回相关的商铺图片列表
-		List<AppealImg> appealImgList = appealImgDao.queryAppealImgList(appealImg, rowIndex, pageSize,sort,order);
-		return appealImgList;
-	}
-
-	@Override
-	public void delAppealImg(Long appealImgId) {
-		if (appealImgId != null) {
-			AppealImg appealImg = appealImgDao.getAppealImg(appealImgId);
-			if (appealImg != null) {
-				ImageUtil.deleteFileOrPath(appealImg.getImgAddr());
-				appealImgDao.deleteAppealImgById(appealImgId);
+		try {
+			int effectedNum = appealImgDao.insertAppealImg(appealImg);
+			if (effectedNum <= 0) {
+				throw new AppealOperationException("创建求助详情图片失败");
 			}
-			else{
-			}
-		} else{
+		} catch (Exception e) {
+			throw new AppealOperationException("创建求助详情图片失败:" + e.toString());
 		}
 	}
 
 	@Override
-	public AppealImg createAppealImg(Long appealId, ImageHolder appealImgHolder)
-	{
-		if (appealId != null) {
-			addAppealImg(appealId, appealImgHolder);
+	public AppealExecution addAppeal(Appeal appeal) throws AppealOperationException {
+		// 空值判断
+		if (appeal == null) {
+			return new AppealExecution(AppealStateEnum.NULL_APPEAL);
+		}
+		Long userId = appeal.getUserId();
+		PersonInfo personInfo = personInfoDao.queryPersonInfoByUserId(userId);
+		Long souCoin = personInfo.getSouCoin();
+		if (appeal.getSouCoin() > souCoin) {
+			return new AppealExecution(AppealStateEnum.SOUCOIN_LACK);
+		}
+		try {
+			// 给求助信息赋初始值
+			appeal.setAppealStatus(0);
+			// 添加求助信息
+			int effectedNum = appealDao.insertAppeal(appeal);
+			if (effectedNum <= 0) {
+				throw new AppealOperationException("求助创建失败");
 			}
-		AppealImg appealImg=new AppealImg();
-		appealImg=appealImgDao.getAppealImg(appealId);
-		return appealImg;
+		} catch (Exception e) {
+			throw new AppealOperationException("addAppeal error:" + e.toString());
+		}
+		return new AppealExecution(AppealStateEnum.SUCCESS, appeal);
+	}
+
+	@Override
+	public AppealExecution modifyAppeal(Appeal appeal) throws AppealOperationException {
+		// 空值判断
+		if (appeal == null || appeal.getAppealId() == null) {
+			return new AppealExecution(AppealStateEnum.NULL_APPEAL);
+		}
+		try {
+			int effectedNum = appealDao.updateAppeal(appeal);
+			if (effectedNum <= 0) {
+				throw new AppealOperationException("求助修改失败");
+			}
+		} catch (Exception e) {
+			throw new AppealOperationException("modifyAppeal error:" + e.toString());
+		}
+		return new AppealExecution(AppealStateEnum.SUCCESS, appeal);
+	}
+
+	@Override
+	@Transactional
+	public AppealExecution completeAppeal(Long appealId, Long helpId, Long appealUserId)
+			throws AppealOperationException {
+		if (appealId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_APPEALID);
+		}
+		if (appealUserId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_USERID);
+		}
+		if (helpId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_HELPID);
+		}
+		Long souCoin = 0l;
+		Appeal appeal = appealDao.queryByAppealId(appealId);
+		if (appeal == null) {
+			return new AppealExecution(AppealStateEnum.NULL_APPEAL);
+		}
+		if (appeal.getUserId() != appealUserId) {
+			return new AppealExecution(AppealStateEnum.NOT_USER_APPEAL);
+		}
+		souCoin = appeal.getSouCoin();
+		try {
+			PersonInfo appealPersonInfo = personInfoDao.queryPersonInfoByUserId(appealUserId);
+			Long appealerSouCoin = appealPersonInfo.getSouCoin();
+			Help help = helpDao.queryByHelpId(helpId);
+			if (help == null) {
+				return new AppealExecution(AppealStateEnum.NOT_HELPID);
+			}
+			Long helpUserId = help.getUserId();
+			PersonInfo helpPersonInfo = personInfoDao.queryPersonInfoByUserId(helpUserId);
+			if (helpPersonInfo == null) {
+				return new AppealExecution(AppealStateEnum.NOT_HELPER);
+			}
+
+			if (appealerSouCoin < souCoin) {
+				return new AppealExecution(AppealStateEnum.SOUCOIN_LACK);
+			}
+			if (appeal.getAppealStatus() != 1) {
+				return new AppealExecution(AppealStateEnum.COMPLETE_ERR);
+			}
+			if (help.getHelpStatus() != 1) {
+				return new AppealExecution(AppealStateEnum.COMPLETE_ERR);
+			}
+
+			appealPersonInfo.setSouCoin(appealerSouCoin - souCoin);
+			int effectedNum = personInfoDao.updatePersonInfo(appealPersonInfo);
+			if (effectedNum <= 0) {
+				throw new AppealOperationException("扣除求助者搜币失败");
+			}
+
+			Long helperSouCoin = helpPersonInfo.getSouCoin();
+			helpPersonInfo.setSouCoin(helperSouCoin + souCoin);
+			effectedNum = personInfoDao.updatePersonInfo(helpPersonInfo);
+			if (effectedNum <= 0) {
+				throw new AppealOperationException("增加帮助者搜币失败");
+			}
+
+			appeal.setAppealStatus(2);
+			effectedNum = appealDao.updateAppeal(appeal);
+			if (effectedNum <= 0) {
+				throw new AppealOperationException("修改求助状态失败");
+			}
+
+			help.setHelpStatus(2);
+			help.setAllCoin(souCoin);
+			effectedNum = helpDao.updateHelp(help);
+			if (effectedNum <= 0) {
+				throw new AppealOperationException("修改帮助状态失败");
+			}
+		} catch (Exception e) {
+			throw new AppealOperationException("completeAppeal error:" + e.toString());
+		}
+		AppealExecution ae = new AppealExecution(AppealStateEnum.SUCCESS, appeal);
+		return ae;
+	}
+
+	@Override
+	public AppealExecution cancelAppeal(Long userId, Long appealId) throws AppealOperationException {
+		if (userId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_USERID);
+		}
+		if (appealId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_APPEALID);
+		}
+		Appeal appeal = appealDao.queryByAppealId(appealId);
+		if (appeal.getUserId() != userId) {
+			return new AppealExecution(AppealStateEnum.NOT_USER_APPEAL);
+		}
+		if (appeal.getAppealStatus() != 0) {
+			return new AppealExecution(AppealStateEnum.NOT_CANCEL);
+		}
+
+		Help help = new Help();
+		try {
+			help.setAppealId(appealId);
+			int count = helpDao.queryHelpList(help).size();
+			if (count != 0) {
+				return new AppealExecution(AppealStateEnum.NOT_CANCEL);
+			} else {
+				appeal.setAppealStatus(3);
+				int effectedNum = appealDao.updateAppeal(appeal);
+				if (effectedNum < 0) {
+					throw new AppealOperationException("修改求助状态失败");
+				} else {
+					return new AppealExecution(AppealStateEnum.SUCCESS, appeal);
+				}
+			}
+		} catch (Exception e) {
+			throw new AppealOperationException("cancelAppeal error:" + e.toString());
+		}
+	}
+
+	@Override
+	@Transactional
+	public AppealExecution disableAppeal(Long userId, Long appealId) throws AppealOperationException {
+		if (userId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_USERID);
+		}
+		if (appealId == null) {
+			return new AppealExecution(AppealStateEnum.NULL_APPEALID);
+		}
+		Appeal appeal = appealDao.queryByAppealId(appealId);
+		if (appeal.getUserId() != userId) {
+			return new AppealExecution(AppealStateEnum.NOT_USER_APPEAL);
+		}
+		if (appeal.getAppealStatus() != 1) {
+			return new AppealExecution(AppealStateEnum.NOT_DISABLE);
+		}
+
+		Help help = new Help();
+		try {
+			help.setAppealId(appealId);
+			List<Help> helps = helpDao.queryHelpList(help);
+			for (Help help2 : helps) {
+				if (help2.getHelpStatus() == 1) {
+					help2.setHelpStatus(3);
+					int effectedNum = helpDao.updateHelp(help2);
+					if (effectedNum <= 0) {
+						throw new AppealOperationException("修改帮助状态失败");
+					}
+					break;
+				}
+			}
+			appeal.setAppealStatus(2);
+			int effectedNum = appealDao.updateAppeal(appeal);
+			if (effectedNum < 0) {
+				throw new AppealOperationException("修改求助状态失败");
+			} else {
+				return new AppealExecution(AppealStateEnum.SUCCESS, appeal);
+			}
+		} catch (Exception e) {
+			throw new AppealOperationException("disableAppeal error:" + e.toString());
+		}
+	}
+
+	@Override
+	public AppealImgExecution getAppealImgList(AppealImg appealImg, int pageIndex, int pageSize, String sort, String order) {
+		// 将页码转换成行码
+		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
+		// 依据查询条件，调用dao层返回相关的商铺图片列表
+		List<AppealImg> appealImgList = appealImgDao.queryAppealImgList(appealImg, rowIndex, pageSize,sort,order);
+		// 依据相同的查询条件，返回商铺图片总数
+		int count = appealImgDao.queryAppealImgCount(appealImg);
+		AppealImgExecution aie = new AppealImgExecution();
+		if (appealImgList != null) {
+			aie.setAppealImgList(appealImgList);
+			aie.setCount(count);
+		} else {
+			aie.setState(AppealStateEnum.INNER_ERROR.getState());
+		}
+		return aie;
+	}
+
+	@Override
+	public AppealImgExecution delAppealImg(Long appealImgId) throws AppealOperationException {
+		if (appealImgId != null) {
+			AppealImg appealImg = appealImgDao.getAppealImg(appealImgId);
+			if (appealImg != null) {
+				ImageUtil.deleteFileOrPath(appealImg.getImgAddr());
+				int effectedNum = appealImgDao.deleteAppealImgById(appealImgId);
+				if (effectedNum <= 0) {
+					throw new ShopOperationException("删除图片失败");
+				}
+			}
+		} else {
+			return new AppealImgExecution(AppealStateEnum.NULL_APPEALIMGID);
+		}
+		return new AppealImgExecution(AppealStateEnum.SUCCESS);
+	}
+
+	@Override
+	public AppealImgExecution createAppealImg(Long appealId, ImageHolder appealImgHolder)
+			throws AppealOperationException {
+		if (appealId != null) {
+			try {
+				addAppealImg(appealId, appealImgHolder);
+			} catch (Exception e) {
+				throw new AppealOperationException("createAppealImg error:" + e.toString());
+			}
+		} else {
+			return new AppealImgExecution(AppealStateEnum.NULL_APPEALID);
+		}
+		return new AppealImgExecution(AppealStateEnum.SUCCESS);
 	}
 
 }

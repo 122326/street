@@ -281,7 +281,6 @@ public class OrderController {
 			@RequestBody @ApiParam(name = "Order", value = "传入json格式,要传orderId", required = true)OrderInfo Order, HttpServletRequest request) {
 		Map<String, Object> modelMap = new HashMap<String, Object>();
 
-
 		// 空值判断
 		if (Order != null && Order.getOrderId() != null) {
 			try {

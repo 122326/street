@@ -3,7 +3,7 @@
 	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.dao.OrderDao">
-	<select id="queryOrderList" resultType="com.graduation.ss.entity.OrderInfo">
+	<select id="queryOrderList" resultType="com.entity.OrderInfo">
 		SELECT
 		user_name,order_id,service_id,tb_order.user_id,service_count,order_status,tb_order.create_time,over_time,service_name,order_price
 		FROM
@@ -76,7 +76,7 @@
 			</if>
 		</where>
 	</select>
-	<insert id="insertOrder" parameterType="com.graduation.ss.entity.OrderInfo"
+	<insert id="insertOrder" parameterType="com.entity.OrderInfo"
 			useGeneratedKeys="true" keyProperty="orderId" keyColumn="order_id">
 		INSERT
 		INTO
@@ -105,7 +105,7 @@
 		</foreach>
 	</insert>
 
-	<update id="updateOrder" parameterType="com.graduation.ss.entity.OrderInfo">
+	<update id="updateOrder" parameterType="com.entity.OrderInfo">
 		update tb_order
 		<set>
 			<if test="serviceId!= null">service_id=#{serviceId},</if>
@@ -123,7 +123,7 @@
 	<delete id="deleteOrder">
 		delete from tb_order where order_id=#{orderId}
 	</delete>
-	<select id="queryByOrderId" resultType="com.graduation.ss.entity.OrderInfo" parameterType="Long">
+	<select id="queryByOrderId" resultType="com.entity.OrderInfo" parameterType="Long">
 		SELECT
 		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
 		FROM
@@ -131,7 +131,7 @@
 		WHERE
 		order_id=#{orderId}
 	</select>
-	<select id="queryOrderList2" resultType="com.graduation.ss.entity.OrderInfo">
+	<select id="queryOrderList2" resultType="com.entity.OrderInfo">
 		SELECT
 		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
 		FROM
@@ -164,7 +164,7 @@
 		</where>
 		ORDER BY create_time desc
 	</select>
-	<select id="queryOrderList3" resultType="com.graduation.ss.entity.OrderInfo">
+	<select id="queryOrderList3" resultType="com.entity.OrderInfo">
 		SELECT
 		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
 		FROM
@@ -190,7 +190,7 @@
 			and order_status!=0
 		</where>
 	</select>
-	<select id="queryOrderByUS" resultType="com.graduation.ss.entity.OrderInfo">
+	<select id="queryOrderByUS" resultType="com.entity.OrderInfo">
 		SELECT
 		order_id,service_id,user_id,service_count,order_status,create_time,over_time,service_name,order_price
 		FROM
@@ -210,7 +210,7 @@
 		</where>
 	</select>
 
-	<select id="queryOrderList4" resultType="com.graduation.ss.entity.OrderInfo">
+	<select id="queryOrderList4" resultType="com.entity.OrderInfo">
 		SELECT
 		user_name,tb_order.order_id,tb_order.service_id,tb_order.user_id,service_count,order_status,tb_order.create_time,tb_order.over_time,service_name,order_price
 		FROM tb_order

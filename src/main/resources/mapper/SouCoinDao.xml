@@ -14,7 +14,7 @@
         VALUES (#{userID}, #{souCoin}, #{method}, #{bankName}, #{cardNumber}, CURRENT_TIMESTAMP);
     </insert>
 
-    <select id="listLogs" resultMap="souCoinLogMap">
+    <select id="listLogs" resultType="com.vo.SoucoinLog">
         SELECT tb_person_info.user_id, user_name, value, bank_name, method, card_number, time
         FROM tb_soucoin_log
         JOIN tb_person_info
@@ -22,6 +22,9 @@
         <where>
             <if test="userID != null">
                 tb_soucoin_log.user_id = #{userID}
+            </if>
+            <if test="userName != null">
+                user_name LIKE CONCAT('%',#{userName},'%')
             </if>
             <if test="startTime != null">
                 AND time >= #{startTime}
@@ -36,7 +39,28 @@
         <if test="sort == null and order == null">
             ORDER BY time desc
         </if>
-        LIMIT #{rowsIndex}, #{pageSize}
+        LIMIT #{page}, #{rows}
+    </select>
+
+    <select id="getCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM tb_soucoin_log
+        JOIN tb_person_info
+        ON tb_person_info.user_id = tb_soucoin_log.user_id
+        <where>
+            <if test="userID != null">
+                tb_soucoin_log.user_id = #{userID}
+            </if>
+            <if test="userName != null">
+                user_name LIKE CONCAT('%',#{userName},'%')
+            </if>
+            <if test="startTime != null">
+                AND time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND time &lt;= #{endTime}
+            </if>
+        </where>
     </select>
 
     <select id="getSummary" resultType="java.lang.Long">
@@ -47,6 +71,9 @@
         WHERE value > 0
         <if test="userID != null">
             AND tb_soucoin_log.user_id = #{userID}
+        </if>
+        <if test="userName != null">
+            AND user_name LIKE CONCAT('%',#{userName},'%')
         </if>
         <if test="startTime != null">
             AND time >= #{startTime}
@@ -73,12 +100,4 @@
             AND time &lt;= #{endTime}
         </if>
     </select>
-
-    <resultMap id="souCoinLogMap" type="com.entity.Soucoin">
-        <id property="logId" column="log_id"/>
-        <result property="userId" column="user_id"/>
-        <result property="bankName" column="bank_name"/>
-        <result property="cardNumber" column="card_number"/>
-    </resultMap>
-
 </mapper>

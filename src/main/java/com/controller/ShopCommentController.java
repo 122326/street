@@ -1,52 +1,279 @@
 package com.controller;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
 
 import com.dto.ConstantForSuperAdmin;
 import com.dto.OrderExecution;
 import com.dto.ShopCommentExecution;
-import com.entity.*;
+import com.entity.OrderInfo;
+import com.entity.ServiceInfo;
+import com.entity.Shop;
+import com.entity.ShopComment;
 import com.enums.OrderStateEnum;
 import com.enums.ShopCommentStateEnum;
 import com.service.OrderService;
+import com.service.SService;
 import com.service.ShopCommentService;
 import com.util.HttpServletRequestUtil;
-import io.swagger.annotations.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-
-import static com.util.NameUtil.HumpToUnderline;
-import static com.util.SQLUtil.sqlValidate;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 
 @RestController
-@RequestMapping("/shopcomment")
+@RequestMapping("/shopComment")
 @Api(value = "ShopCommentController|对服务评论操作的控制器")
 public class ShopCommentController {
 	@Autowired
-	private OrderService orderService;
-	@Autowired
 	private ShopCommentService shopCommentService;
 
-	//获取其所有服务评论信息（分页）
-	@RequestMapping(value = "/listShopComment", method = RequestMethod.POST)
+	@Autowired
+	private SService sService;
+	@Autowired
+	private OrderService OrderService;
+	private static final Logger log = LogManager.getLogger(ShopCommentController.class);
+
+	//通过店铺id获取评论列表 分页 再获得订单，最后获得服务列表
+	@RequestMapping(value = "/getshopCommentlistbyshopid", method = RequestMethod.GET)
 	@ResponseBody
+	@ApiOperation(value = "根据shopID获取其所有服务评论信息（分页）")
+	@ApiImplicitParams({
+		@ApiImplicitParam(paramType = "query", name = "shopId", value = "店铺ID", required = true, dataType = "Long", example = "3"),
+			@ApiImplicitParam(paramType = "query", name = "pageIndex", value = "页码", required = true, dataType = "int"),
+			@ApiImplicitParam(paramType = "query", name = "pageSize", value = "一页的服务评价数目", required = true, dataType = "int") })
+	private Map<String, Object> getShopCommentListByShopId(HttpServletRequest request) {
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		Long shopId = HttpServletRequestUtil.getLong(request, "shopId");
+		int pageIndex = HttpServletRequestUtil.getInt(request, "pageIndex");
+		int pageSize = HttpServletRequestUtil.getInt(request, "pageSize");
+		try {
+			ShopCommentExecution se = shopCommentService.getByShopId(shopId, pageIndex, pageSize);
+			int pageNum = (int) (se.getCount() / pageSize);
+			if (pageNum * pageSize < se.getCount())
+				pageNum++;
+			List<ShopComment> shopCommentList=se.getShopCommentList();
+			List<ServiceInfo> servicelist=new ArrayList<ServiceInfo>();
+			for(int i=0;i<shopCommentList.size();i++)
+			{
+				//通过shopComment获得订单，再获得服务
+				 OrderInfo order=OrderService.getByOrderId(shopCommentList.get(i).getOrderId());
+				 //服务可能已被删除，所以获取的serviceInfo为null
+				 ServiceInfo serviceInfo=sService.getByServiceId(order.getServiceId());
+				 if(serviceInfo==null)
+				 {
+					 serviceInfo=new ServiceInfo();
+					 serviceInfo.setServiceName(order.getServiceName());
+				 }
+				servicelist.add(serviceInfo);
+			}
+			modelMap.put("serviceList", servicelist);
+			modelMap.put("shopCommentList", se.getShopCommentList());
+			modelMap.put("pageNum", pageNum);
+			modelMap.put("success", true);
+		} catch (Exception e) {
+			modelMap.put("success", false);
+			modelMap.put("errMsg", e.getMessage());
+		}
+		return modelMap;
+	}
+	//通过店铺id获取店铺信息（包括 店铺评分平均分 搜街成功率 ）
+		@RequestMapping(value = "/getAvgScorebyshopid", method = RequestMethod.GET)
+		@ResponseBody
+		@ApiOperation(value = "根据shopID获取店铺信息（包括 店铺评分平均分 搜街成功率 ）")
+		@ApiImplicitParams({
+			@ApiImplicitParam(paramType = "query", name = "shopId", value = "店铺ID", required = true, dataType = "Long", example = "3") })
+		private Map<String, Object> getAvgScoreByShopId(HttpServletRequest request) {
+			Map<String, Object> modelMap = new HashMap<String, Object>();
+			Long shopId = HttpServletRequestUtil.getLong(request, "shopId");
+			try {
+				Shop shop= shopCommentService.getAvgByShopId(shopId);
+				modelMap.put("shop", shop);
+				modelMap.put("successRate", shop.getSuccessRate());
+				modelMap.put("serviceAvg", shop.getServiceAvg());
+				modelMap.put("starAvg", shop.getStarAvg());
+				modelMap.put("success", true);
+			} catch (Exception e) {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", e.getMessage());
+			}
+			return modelMap;
+		}
+
+	//通过店铺id获取过去三个月评论列表 和服务列表 
+	@RequestMapping(value = "/getshopCommentlistbysid", method = RequestMethod.GET)
+	@ResponseBody
+	@ApiOperation(value = "根据shopID获取过去三个月评论列表 和服务列表")
+	@ApiImplicitParams({
+		@ApiImplicitParam(paramType = "query", name = "shopId", value = "店铺ID", required = true, dataType = "Long", example = "3")})
+	private Map<String, Object> getShopCommentListBySId(HttpServletRequest request) {
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		Long shopId = HttpServletRequestUtil.getLong(request, "shopId");
+		try {
+			ShopCommentExecution se = shopCommentService.getByShopId2(shopId);
+			List<ShopComment> shopCommentList=se.getShopCommentList();
+			List<ServiceInfo> servicelist=new ArrayList<ServiceInfo>();
+			int n=shopCommentList.size();
+			for(int i=0;i<n;)
+			{
+				 OrderInfo order=OrderService.getByOrderId(shopCommentList.get(i).getOrderId());
+				 LocalDateTime t1=LocalDateTime.now().minusDays(90);
+				 LocalDateTime t2=order.getCreateTime();
+				 if(t1.isBefore(t2))
+				 {
+					 //服务可能已被删除，所以获取的serviceInfo为null
+					 ServiceInfo serviceInfo=sService.getByServiceId(order.getServiceId());
+					 if(serviceInfo==null)
+					 {
+						 serviceInfo=new ServiceInfo();
+						 serviceInfo.setServiceName(order.getServiceName());
+					 }
+					 servicelist.add(serviceInfo);		
+					 i++;
+			     }		
+				 else
+				 {
+					 shopCommentList.remove(i);
+					 n=n-1;
+				 }
+			}
+			modelMap.put("serviceList", servicelist);
+			modelMap.put("shopCommentList", se.getShopCommentList());
+			modelMap.put("success", true);
+		} catch (Exception e) {
+			modelMap.put("success", false);
+			modelMap.put("errMsg", e.getMessage());
+		}
+		return modelMap;
+	}
+	//通过userId获取评论列表 分页 
+		@RequestMapping(value = "/getshopCommentlistbyuserid", method = RequestMethod.GET)
+		@ResponseBody
+		@ApiOperation(value = "根据userID获取其所有服务评论信息（分页）")
+		@ApiImplicitParams({
+			@ApiImplicitParam(paramType = "query", name = "userId", value = "用户ID", required = true, dataType = "Long", example = "1"),
+				@ApiImplicitParam(paramType = "query", name = "pageIndex", value = "页码", required = true, dataType = "int"),
+				@ApiImplicitParam(paramType = "query", name = "pageSize", value = "一页的服务评价数目", required = true, dataType = "int") })
+		private Map<String, Object> getShopCommentListByUserId(HttpServletRequest request) {
+			Map<String, Object> modelMap = new HashMap<String, Object>();
+			Long userId = HttpServletRequestUtil.getLong(request, "userId");
+			int pageIndex = HttpServletRequestUtil.getInt(request, "pageIndex");
+			int pageSize = HttpServletRequestUtil.getInt(request, "pageSize");
+			try {
+				ShopCommentExecution se = shopCommentService.getByUserId(userId, pageIndex, pageSize);
+				int pageNum = (int) (se.getCount() / pageSize);
+				if (pageNum * pageSize < se.getCount())
+					pageNum++;
+				modelMap.put("shopCommentList", se.getShopCommentList());
+				modelMap.put("pageNum", pageNum);
+				modelMap.put("success", true);
+			} catch (Exception e) {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", e.getMessage());
+			}
+			return modelMap;
+		}
+	//通过ordId获取评论列表
+	@RequestMapping(value = "/getshopCommentlistbyordId/{ordId}", method = RequestMethod.GET)
+	@ResponseBody
+	@ApiOperation(value = "根据ordId获取其所有服务评论信息")
+	@ApiImplicitParams({
+			@ApiImplicitParam(paramType = "query", name = "ordId", value = "用户ID", required = true, dataType = "Long", example = "1"),
+			})
+	private Map<String, Object> getShopCommentListByOrdId(@PathVariable("ordId") Integer ordId){
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		try {
+			ShopComment se = shopCommentService.getByOrderId(ordId);
+			modelMap.put("shopComment", se);
+			modelMap.put("success", true);
+		} catch (Exception e) {
+			modelMap.put("success", false);
+			modelMap.put("errMsg", e.getMessage());
+		}
+		return modelMap;
+	}
+
+		//通过userId获取过去三个月评论列表  
+		@RequestMapping(value = "/getshopCommentlistbyuid", method = RequestMethod.GET)
+		@ResponseBody
+		@ApiOperation(value = "根据userID获取过去三个月其所有服务评论信息")
+		@ApiImplicitParams({
+			@ApiImplicitParam(paramType = "query", name = "userId", value = "用户ID", required = true, dataType = "Long", example = "1")})
+		private Map<String, Object> getShopCommentListByUId(HttpServletRequest request) {
+			Map<String, Object> modelMap = new HashMap<String, Object>();
+			Long userId = HttpServletRequestUtil.getLong(request, "userId");
+			try {
+				ShopCommentExecution se = shopCommentService.getByUserId2(userId);
+				List<ShopComment> shopCommentList=se.getShopCommentList();
+				List<ServiceInfo> servicelist=new ArrayList<ServiceInfo>();
+				int n=shopCommentList.size();
+				for(int i=0;i<n;)
+				{
+					 OrderInfo order=OrderService.getByOrderId(shopCommentList.get(i).getOrderId());
+					 LocalDateTime t1=LocalDateTime.now().minusDays(90);
+					 LocalDateTime t2=order.getCreateTime();
+					 if(t1.isBefore(t2))
+					 {
+						 //服务可能已被删除，所以获取的serviceInfo为null
+						 ServiceInfo serviceInfo=sService.getByServiceId(order.getServiceId());
+						 if(serviceInfo==null)
+						 {
+							 serviceInfo=new ServiceInfo();
+							 serviceInfo.setServiceName(order.getServiceName());
+						 }
+						 servicelist.add(serviceInfo);		
+						 i++;
+				     }		
+					 else
+					 {
+						 shopCommentList.remove(i);
+						 n=n-1;
+					 }
+				}
+				modelMap.put("serviceList", servicelist);
+				modelMap.put("shopCommentList", se.getShopCommentList());
+				modelMap.put("success", true);
+			} catch (Exception e) {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", e.getMessage());
+			}
+			return modelMap;
+		}
+	//根据查询条件获取评论列表 分页
+	@RequestMapping(value = "/listShopComment", method = RequestMethod.GET)
+	@ResponseBody
+	@ApiOperation(value = "根据shopID、orderId、userId、commentContent获取其所有服务评论信息（分页）")
+	@ApiImplicitParams({
+		@ApiImplicitParam(paramType = "query", name = "shopId", value = "店铺ID", required = true, dataType = "Long", example = "3"),
+		@ApiImplicitParam(paramType = "query", name = "orderId", value = "订单ID", required = true, dataType = "Long", example = "1"),
+		@ApiImplicitParam(paramType = "query", name = "userId", value = "用户ID", required = true, dataType = "Long", example = "1"),
+		@ApiImplicitParam(paramType = "query", name = "commentContent", value = "评论内容", required = true, dataType = "String", example = "测试shopComment内容"),
+		@ApiImplicitParam(paramType = "query", name = "commentReply", value = "商家回复", required = true, dataType = "String", example = "回复"),
+			@ApiImplicitParam(paramType = "query", name = "pageIndex", value = "页码", required = true, dataType = "int"),
+			@ApiImplicitParam(paramType = "query", name = "pageSize", value = "一页的服务数目", required = true, dataType = "int") })
 	private Map<String, Object> listShopComment(HttpServletRequest request) {
 		Map<String, Object> modelMap = new HashMap<String, Object>();
 		ShopCommentExecution se = null;
 		// 获取分页信息
 		int pageIndex = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_NO);
 		int pageSize = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_SIZE);
-		System.out.println(pageIndex+" "+pageSize);
 		// 空值判断
 		if (pageIndex > 0 && pageSize > 0) {
 			ShopComment shopCommentCondition = new ShopComment();
-			/*
 			long shopId=HttpServletRequestUtil.getLong(request, "shopId");
 			if(shopId>0)
 			   shopCommentCondition.setShopId(shopId);
@@ -56,17 +283,6 @@ public class ShopCommentController {
 			long userId=HttpServletRequestUtil.getLong(request, "userId");
 			if(userId>0)
 			    shopCommentCondition.setUserId(userId);
-			String commentReply=HttpServletRequestUtil.getString(request, "commentReply");
-			if(commentReply!=null)
-		    {
-				try {
-					// 若传入评论内容，则将评论内容解码后添加到查询条件里，进行模糊查询
-					shopCommentCondition.setCommentReply(URLDecoder.decode(commentReply, "UTF-8"));
-				} catch (UnsupportedEncodingException e) {
-					modelMap.put("success", false);
-					modelMap.put("errMsg", e.toString());
-				}
-			}
 			String shopCommentContent=HttpServletRequestUtil.getString(request, "commentContent");
 			if(shopCommentContent!=null)
 		    {
@@ -78,98 +294,6 @@ public class ShopCommentController {
 					modelMap.put("errMsg", e.toString());
 				}
 			}
-			*/
-			try {
-				String userName=HttpServletRequestUtil.getString(request, "userName");
-				if (userName != null) {
-
-					shopCommentCondition.setUserName(userName);
-				}
-				String shopName=HttpServletRequestUtil.getString(request, "shopName");
-				if (shopName != null) {
-
-					shopCommentCondition.setShopName(shopName);
-				}
-				Long shopId = HttpServletRequestUtil.getLong(request, "shopId");
-				if (shopId != null) {
-
-					shopCommentCondition.setShopId(shopId);
-				}
-				Long userId = HttpServletRequestUtil.getLong(request, "userId");
-				if (userId != null) {
-
-					shopCommentCondition.setUserId(userId);
-				}
-				Long orderId = HttpServletRequestUtil.getLong(request, "orderId");
-				if (orderId != null) {
-
-					shopCommentCondition.setOrderId(orderId);
-				}
-				String commentContent = HttpServletRequestUtil.getString(request, "commentContent");
-				if (commentContent != null) {
-
-					shopCommentCondition.setCommentContent(commentContent);
-				}
-
-				String commentReply = HttpServletRequestUtil.getString(request, "commentReply");
-				if (commentReply != null) {
-
-					shopCommentCondition.setCommentReply(commentReply);
-				}
-
-				String sort = HttpServletRequestUtil.getString(request, "sort");
-				if(sort!=null) sort = HumpToUnderline(sort);
-				String order = HttpServletRequestUtil.getString(request, "order");
-				//检测sort和order是否合法
-				if(sort!=null&&!sort.equals("order_id")){
-					if (sqlValidate(sort)) {
-						modelMap.put("Warning:","您的行为已被记录，请勿再次操作，否则报警处理!");
-						return modelMap;
-					}}
-				if(order!=null){
-					if (sqlValidate(order)) {
-						modelMap.put("Warning:","您的行为已被记录，请勿再次操作，否则报警处理!");
-						return modelMap;
-					}}
-				// 根据查询条件分页返回评论列表
-				se = shopCommentService.getShopCommentList(shopCommentCondition, pageIndex, pageSize,sort,order);
-			} catch (Exception e) {
-				modelMap.put("success", false);
-				modelMap.put("errMsg", e.toString());
-				return modelMap;
-			}
-			if (se.getShopCommentList() != null) {
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, se.getShopCommentList());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, se.getCount());
-				modelMap.put("success", true);
-			} else {
-				// 取出数据为空，也返回new list以使得前端不出错
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<ShopComment>());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
-				modelMap.put("success", true);
-			}
-			return modelMap;
-		} else {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", "空的查询信息");
-			return modelMap;
-		}
-	}
-	//根据shopID获取其所有服务评论信息（分页）
-	@RequestMapping(value = "/listShopCommentByShopId", method = RequestMethod.POST)
-	@ResponseBody
-	private Map<String, Object> listShopCommentByShopId(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		ShopCommentExecution se = null;
-		// 获取分页信息
-		int pageIndex = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_NO);
-		int pageSize = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_SIZE);
-		// 空值判断
-		if (pageIndex > 0 && pageSize > 0) {
-			ShopComment shopCommentCondition = new ShopComment();
-			long shopId=HttpServletRequestUtil.getLong(request, "shopId");
-			if(shopId>0)
-				shopCommentCondition.setShopId(shopId);
 			try {
 				// 根据查询条件分页返回评论列表
 				se = shopCommentService.getShopCommentList(shopCommentCondition, pageIndex, pageSize,null,null);
@@ -195,277 +319,78 @@ public class ShopCommentController {
 			return modelMap;
 		}
 	}
-	//根据orderId获取其所有服务评论信息（分页）
-	@RequestMapping(value = "/listShopCommentByOrderId", method = RequestMethod.POST)
-	@ResponseBody
-	private Map<String, Object> listShopCommentByOrderId(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		ShopCommentExecution se = null;
-		// 获取分页信息
-		int pageIndex = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_NO);
-		int pageSize = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_SIZE);
-		// 空值判断
-		if (pageIndex > 0 && pageSize > 0) {
-			ShopComment shopCommentCondition = new ShopComment();
-			long orderId=HttpServletRequestUtil.getLong(request, "orderId");
-			if(orderId>0)
-				shopCommentCondition.setOrderId(orderId);
-			try {
-				// 根据查询条件分页返回评论列表
-				se = shopCommentService.getShopCommentList(shopCommentCondition, pageIndex, pageSize,null,null);
-			} catch (Exception e) {
-				modelMap.put("success", false);
-				modelMap.put("errMsg", e.toString());
-				return modelMap;
-			}
-			if (se.getShopCommentList() != null) {
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, se.getShopCommentList());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, se.getCount());
-				modelMap.put("success", true);
-			} else {
-				// 取出数据为空，也返回new list以使得前端不出错
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<ShopComment>());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
-				modelMap.put("success", true);
-			}
-			return modelMap;
-		} else {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", "空的查询信息");
-			return modelMap;
-		}
-	}
-	//根据userId获取其所有服务评论信息（分页）
-	@RequestMapping(value = "/listShopCommentByUserId", method = RequestMethod.POST)
-	@ResponseBody
-	private Map<String, Object> listShopCommentByUserId(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		ShopCommentExecution se = null;
-		// 获取分页信息
-		int pageIndex = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_NO);
-		int pageSize = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_SIZE);
-		// 空值判断
-		if (pageIndex > 0 && pageSize > 0) {
-			ShopComment shopCommentCondition = new ShopComment();
-			long userId=HttpServletRequestUtil.getLong(request, "userId");
-			if(userId>0)
-				shopCommentCondition.setUserId(userId);
-			try {
-				// 根据查询条件分页返回评论列表
-				se = shopCommentService.getShopCommentList(shopCommentCondition, pageIndex, pageSize,null,null);
-			} catch (Exception e) {
-				modelMap.put("success", false);
-				modelMap.put("errMsg", e.toString());
-				return modelMap;
-			}
-			if (se.getShopCommentList() != null) {
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, se.getShopCommentList());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, se.getCount());
-				modelMap.put("success", true);
-			} else {
-				// 取出数据为空，也返回new list以使得前端不出错
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<ShopComment>());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
-				modelMap.put("success", true);
-			}
-			return modelMap;
-		} else {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", "空的查询信息");
-			return modelMap;
-		}
-	}
-	//根据commentContent获取其所有服务评论信息（分页）
-	@RequestMapping(value = "/listShopCommentByCommentContent", method = RequestMethod.POST)
-	@ResponseBody
-	private Map<String, Object> listShopCommentByCommentContent(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		ShopCommentExecution se = null;
-		// 获取分页信息
-		int pageIndex = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_NO);
-		int pageSize = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_SIZE);
-		// 空值判断
-		if (pageIndex > 0 && pageSize > 0) {
-			ShopComment shopCommentCondition = new ShopComment();
-			String shopCommentContent=HttpServletRequestUtil.getString(request, "commentContent");
-			if(shopCommentContent!=null)
-			{
-				try {
-					// 若传入评论内容，则将评论内容解码后添加到查询条件里，进行模糊查询
-					shopCommentCondition.setCommentContent(URLDecoder.decode(shopCommentContent, "UTF-8"));
-				} catch (UnsupportedEncodingException e) {
-					modelMap.put("success", false);
-					modelMap.put("errMsg", e.toString());
-				}
-			}
-			try {
-				// 根据查询条件分页返回评论列表
-				se = shopCommentService.getShopCommentList(shopCommentCondition, pageIndex, pageSize,null,null);
-			} catch (Exception e) {
-				modelMap.put("success", false);
-				modelMap.put("errMsg", e.toString());
-				return modelMap;
-			}
-			if (se.getShopCommentList() != null) {
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, se.getShopCommentList());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, se.getCount());
-				modelMap.put("success", true);
-			} else {
-				// 取出数据为空，也返回new list以使得前端不出错
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<ShopComment>());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
-				modelMap.put("success", true);
-			}
-			return modelMap;
-		} else {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", "空的查询信息");
-			return modelMap;
-		}
-	}
-
-	//根据commentReply获取其所有服务评论信息（分页）
-	@RequestMapping(value = "/listShopCommentByCommentReply", method = RequestMethod.POST)
-	@ResponseBody
-	private Map<String, Object> listShopCommentByCommentReply(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		ShopCommentExecution se = null;
-		// 获取分页信息
-		int pageIndex = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_NO);
-		int pageSize = HttpServletRequestUtil.getInt(request, ConstantForSuperAdmin.PAGE_SIZE);
-		// 空值判断
-		if (pageIndex > 0 && pageSize > 0) {
-			ShopComment shopCommentCondition = new ShopComment();
-			String commentReply=HttpServletRequestUtil.getString(request, "commentReply");
-			if(commentReply!=null)
-			{
-				try {
-					// 若传入评论内容，则将评论内容解码后添加到查询条件里，进行模糊查询
-					shopCommentCondition.setCommentReply(URLDecoder.decode(commentReply, "UTF-8"));
-				} catch (UnsupportedEncodingException e) {
-					modelMap.put("success", false);
-					modelMap.put("errMsg", e.toString());
-				}
-			}
-			try {
-				// 根据查询条件分页返回评论列表
-				se = shopCommentService.getShopCommentList(shopCommentCondition, pageIndex, pageSize,null,null);
-			} catch (Exception e) {
-				modelMap.put("success", false);
-				modelMap.put("errMsg", e.toString());
-				return modelMap;
-			}
-			if (se.getShopCommentList() != null) {
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, se.getShopCommentList());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, se.getCount());
-				modelMap.put("success", true);
-			} else {
-				// 取出数据为空，也返回new list以使得前端不出错
-				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<ShopComment>());
-				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
-				modelMap.put("success", true);
-			}
-			return modelMap;
-		} else {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", "空的查询信息");
-			return modelMap;
-		}
-	}
-
 	/**
-	 * 添加评论信息
+	 * 根据id返回评论信息
+	 * 
 	 * @param request
 	 * @return
 	 */
-	@RequestMapping(value = "/addShopComment", method = RequestMethod.POST)
+	@RequestMapping(value = "/searchshopCommentbyid", method = RequestMethod.GET)
 	@ResponseBody
-	private Map<String, Object> addShopComment(HttpServletRequest request) {
+	@ApiOperation(value = "根据shopCommentId获取服务评论信息")
+		@ApiImplicitParam(paramType = "query", name = "shopCommentId", value = "服务评价ID", required = true, dataType = "Long", example = "3")
+	private Map<String, Object> searchShopCommentById(HttpServletRequest request) {
 		Map<String, Object> modelMap = new HashMap<String, Object>();
-		long shopId=HttpServletRequestUtil.getLong(request, "shopId");
-		long orderId=HttpServletRequestUtil.getLong(request, "orderId");
-		long userId=HttpServletRequestUtil.getLong(request, "userId");
-		Integer serviceRating=HttpServletRequestUtil.getInt(request,"serviceRating");
-		Integer starRating=HttpServletRequestUtil.getInt(request,"starRating");
-		String commentContent=HttpServletRequestUtil.getString(request, "commentContent");
-		String commentReply=HttpServletRequestUtil.getString(request, "commentReply");
-		ShopComment shopComment = new ShopComment();
-		shopComment.setShopId(shopId);
-		shopComment.setOrderId(orderId);
-		shopComment.setUserId(userId);
-		shopComment.setServiceRating(serviceRating);
-		shopComment.setStarRating(starRating);
-		shopComment.setCommentContent(commentContent);
-		shopComment.setCommentReply(commentReply);
-
-		// 空值判断
-		try {
-			OrderInfo order=orderService.getByOrderId(shopComment.getOrderId());
-			if(order.getOrderStatus()==1)
-			{
-				//添加评论
-				ShopCommentExecution ae = shopCommentService.addShopComment(shopComment);
-				order.setOrderStatus(2);
-				//更新订单
-				OrderExecution a = orderService.modifyOrder(order);
-				if (a.getState() == OrderStateEnum.SUCCESS.getState()) {
-
-				}
-				else {
-					modelMap.put("success", false);
-					modelMap.put("errMsg", a.getStateInfo());
-				}
-				if (ae.getState() == ShopCommentStateEnum.SUCCESS.getState()) {
-					modelMap.put("success", true);
-				} else {
-					modelMap.put("success", false);
-					modelMap.put("errMsg", ae.getStateInfo());
-				}
-			}
-			else
-			{
+		ShopComment shopComment = null;
+		// 从请求中获取shopCommentId
+		long shopCommentId = HttpServletRequestUtil.getLong(request, "shopCommentId");
+		if (shopCommentId > 0) {
+			try {
+				// 根据Id获取评论实例
+				shopComment = shopCommentService.getByShopCommentId(shopCommentId);
+				
+			} catch (Exception e) {
 				modelMap.put("success", false);
-				modelMap.put("errMsg","添加评论失败，订单状态不为待评价");
+				modelMap.put("errMsg", e.toString());
+				return modelMap;
 			}
-
-
-		} catch (Exception e) {
+			if (shopComment != null) {
+				List<ShopComment> shopCommentList = new ArrayList<ShopComment>();
+				shopCommentList.add(shopComment);
+				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, shopCommentList);
+				modelMap.put(ConstantForSuperAdmin.TOTAL, 1);
+				modelMap.put("success", true);
+			} else {
+				modelMap.put(ConstantForSuperAdmin.PAGE_SIZE, new ArrayList<ShopComment>());
+				modelMap.put(ConstantForSuperAdmin.TOTAL, 0);
+				modelMap.put("success", true);
+			}
+			return modelMap;
+		} else {
 			modelMap.put("success", false);
-			modelMap.put("errMsg", e.toString());
+			modelMap.put("errMsg", "空的查询信息");
 			return modelMap;
 		}
-		return modelMap;
 	}
-	//更新评论
-	@RequestMapping(value = "/modifyShopComment", method = RequestMethod.POST)
+	//添加评论
+	@RequestMapping(value = "/addshopComment", method = RequestMethod.POST)
 	@ResponseBody
-	@ApiOperation(value = "修改服务评价信息")
-	private Map<String, Object> modifyShopComment(HttpServletRequest request) {
+	@ApiOperation(value = "添加服务评价信息")
+	private Map<String, Object> addShopComment(
+			@RequestBody @ApiParam(name = "ShopComment", value = "传入json格式,要传orderId", required = true)ShopComment shopComment, HttpServletRequest request) {
 		Map<String, Object> modelMap = new HashMap<String, Object>();
-		long shopCommentId=HttpServletRequestUtil.getLong(request, "shopCommentId");
-		long shopId=HttpServletRequestUtil.getLong(request, "shopId");
-		long orderId=HttpServletRequestUtil.getLong(request, "orderId");
-		long userId=HttpServletRequestUtil.getLong(request, "userId");
-		Integer serviceRating=HttpServletRequestUtil.getInt(request,"serviceRating");
-		Integer starRating=HttpServletRequestUtil.getInt(request,"starRating");
-		String commentContent=HttpServletRequestUtil.getString(request, "commentContent");
-		String commentReply=HttpServletRequestUtil.getString(request, "commentReply");
-		System.out.println(shopCommentId+" "+commentContent);
-		ShopComment shopComment = new ShopComment();
-		shopComment.setShopCommentId(shopCommentId);
-		shopComment.setShopId(shopId);
-		shopComment.setOrderId(orderId);
-		shopComment.setUserId(userId);
-		shopComment.setServiceRating(serviceRating);
-		shopComment.setStarRating(starRating);
-		shopComment.setCommentContent(commentContent);
-		shopComment.setCommentReply(commentReply);
-		System.out.println(shopComment.toString());
 		// 空值判断
-		if (shopComment != null && shopComment.getShopCommentId() != null) {
+		if (shopComment != null) {
 			try {
-				//更新评论
-				ShopCommentExecution ae = shopCommentService.modifyShopComment(shopComment);
+				//添加评论		
+				ShopCommentExecution ae = shopCommentService.addShopComment(shopComment);
+				OrderInfo order=OrderService.getByOrderId(shopComment.getOrderId());
+				order.setOrderStatus(2);
+				try {
+					//更新订单
+					OrderExecution a = OrderService.modifyOrder(order);
+					if (a.getState() == OrderStateEnum.SUCCESS.getState()) {
+						
+					} 
+					else {
+						modelMap.put("success", false);
+						modelMap.put("errMsg", a.getStateInfo());
+					}
+				} catch (Exception e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+					return modelMap;
+				}
 				if (ae.getState() == ShopCommentStateEnum.SUCCESS.getState()) {
 					modelMap.put("success", true);
 				} else {
@@ -482,47 +407,175 @@ public class ShopCommentController {
 			modelMap.put("success", false);
 			modelMap.put("errMsg", "请输入评论信息");
 		}
+	    log.info("shopCommentInfo/n"+shopComment.toString());
 		return modelMap;
 	}
-
-	//删除评论
-	@RequestMapping(value = "/deleteshopcomment", method = RequestMethod.POST)
-	@ResponseBody
-	@ApiOperation(value = "删除服务评价信息")
-	@ApiImplicitParam(paramType = "query", name = "shopCommentId", value = "服务评价ID", required = true, dataType = "Long", example = "3")
-	private Map<String, Object> deleteShopComment(HttpServletRequest request) {
-		Map<String, Object> modelMap = new HashMap<String, Object>();
-		// 从请求中获取shopCommentId
-		long shopCommentId = HttpServletRequestUtil.getLong(request, "shopCommentId");
-		if (shopCommentId > 0) {
-			try {
-				ShopComment shopComment=shopCommentService.getByShopCommentId(shopCommentId);
-				OrderInfo order=orderService.getByOrderId(shopComment.getOrderId());
-				order.setOrderStatus(1);
-				orderService.modifyOrder(order);
-				//删除评论
-				ShopCommentExecution ae = shopCommentService.deleteShopComment(shopCommentId);
-				if (ae.getState() == ShopCommentStateEnum.SUCCESS.getState()) {
-					modelMap.put("success", true);
-				} else {
+	//更新评论
+		@RequestMapping(value = "/modifyshopComment", method = RequestMethod.POST)
+		@ResponseBody
+		@ApiOperation(value = "修改服务评价信息")
+		private Map<String, Object> modifyShopComment(
+				@RequestBody @ApiParam(name = "ShopComment", value = "传入json格式,要传shopCommentId", required = true)ShopComment shopComment, HttpServletRequest request) {
+			Map<String, Object> modelMap = new HashMap<String, Object>();
+			System.out.println(shopComment.toString());
+			// 空值判断
+			if (shopComment != null && shopComment.getShopCommentId() != null) {
+				try {
+					//更新评论
+					ShopCommentExecution ae = shopCommentService.modifyShopComment(shopComment);
+					if (ae.getState() == ShopCommentStateEnum.SUCCESS.getState()) {
+						modelMap.put("success", true);
+					} else {
+						modelMap.put("success", false);
+						modelMap.put("errMsg", ae.getStateInfo());
+					}
+				} catch (Exception e) {
 					modelMap.put("success", false);
-					modelMap.put("errMsg", ae.getStateInfo());
+					modelMap.put("errMsg", e.toString());
+					return modelMap;
 				}
 
-			} catch (Exception e) {
+			} else {
 				modelMap.put("success", false);
-				modelMap.put("errMsg", e.toString());
-				return modelMap;
+				modelMap.put("errMsg", "请输入评论信息");
 			}
-
-
-		}
-		else {
-			modelMap.put("success", false);
-			modelMap.put("errMsg", "空的查询信息");
 			return modelMap;
 		}
-		return modelMap;
-	}
+		//更新评论
+				@RequestMapping(value = "/modifyshopCommentReply", method = RequestMethod.POST)
+				@ResponseBody
+				@ApiOperation(value = "修改服务评价信息")
+				@ApiImplicitParams({	
+					@ApiImplicitParam(paramType = "query", name = "orderId", value = "订单ID", required = true, dataType = "Long", example = "1"),
+					@ApiImplicitParam(paramType = "query", name = "commentReply", value = "商家回复", required = true, dataType = "String")})
+				private Map<String, Object> modifyShopCommentReply(HttpServletRequest request) {
+					Map<String, Object> modelMap = new HashMap<String, Object>();
+					String commentReply=HttpServletRequestUtil.getString(request, "commentReply");
+					long orderId=HttpServletRequestUtil.getLong(request, "orderId");
+					if(orderId>0) {
+						try {
+							//更新评论回复信息			
+							ShopComment shopComment=shopCommentService.getByOrderId(orderId);
+							shopComment.setCommentReply(commentReply);
+							ShopCommentExecution ae = shopCommentService.modifyShopComment(shopComment);
+							OrderInfo order=OrderService.getByOrderId(orderId);
+							order.setOrderStatus(4);
+							try {
+								//更新订单
+								OrderExecution a = OrderService.modifyOrder(order);
+								if (a.getState() == OrderStateEnum.SUCCESS.getState()) {
+									
+								} 
+								else {
+									modelMap.put("success", false);
+									modelMap.put("errMsg", a.getStateInfo());
+								}
+							} catch (Exception e) {
+								modelMap.put("success", false);
+								modelMap.put("errMsg", e.toString());
+								return modelMap;
+							}
+							if (ae.getState() == ShopCommentStateEnum.SUCCESS.getState()) {
+								modelMap.put("success", true);
+							} else {
+								modelMap.put("success", false);
+								modelMap.put("errMsg", ae.getStateInfo());
+							}
+						} catch (Exception e) {
+							modelMap.put("success", false);
+							modelMap.put("errMsg", e.toString());
+							return modelMap;
+						}
+
+					} else {
+						modelMap.put("success", false);
+						modelMap.put("errMsg", "请输入评论信息");
+					}
+					return modelMap;
+				}
+		//删除评论
+		@RequestMapping(value = "/deleteshopComment", method = RequestMethod.POST)
+		@ResponseBody
+		@ApiOperation(value = "删除服务评价信息")
+		@ApiImplicitParam(paramType = "query", name = "shopCommentId", value = "服务评价ID", required = true, dataType = "Long", example = "3")
+		private Map<String, Object> deleteShopComment(HttpServletRequest request) {
+			Map<String, Object> modelMap = new HashMap<String, Object>();
+			// 从请求中获取shopCommentId
+			long shopCommentId = HttpServletRequestUtil.getLong(request, "shopCommentId");
+			if (shopCommentId > 0) {
+				try {
+
+					//删除评论
+					ShopCommentExecution ae = shopCommentService.deleteShopComment(shopCommentId);
+					if (ae.getState() == ShopCommentStateEnum.SUCCESS.getState()) {
+						modelMap.put("success", true);
+					} else {
+						modelMap.put("success", false);
+						modelMap.put("errMsg", ae.getStateInfo());
+					}
+				} catch (Exception e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+					return modelMap;
+				}
+			}
+			else {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", "空的查询信息");
+				return modelMap;
+			}
+			return modelMap;
+		}
+
+		//删除商家评论
+		@RequestMapping(value = "/deleteshopCommentReply", method = RequestMethod.POST)
+		@ResponseBody
+		@ApiOperation(value = "删除商家回复评论信息")
+		@ApiImplicitParam(paramType = "query", name = "shopCommentId", value = "服务评价ID", required = true, dataType = "Long", example = "3")
+		private Map<String, Object> deleteShopCommentReply(HttpServletRequest request) {
+			Map<String, Object> modelMap = new HashMap<String, Object>();
+			ShopComment shopComment = null;
+			// 从请求中获取shopCommentId
+			long shopCommentId = HttpServletRequestUtil.getLong(request, "shopCommentId");
+			if (shopCommentId > 0) {
+				try {
+					// 根据Id获取评论实例
+					shopComment = shopCommentService.getByShopCommentId(shopCommentId);
+					
+				} catch (Exception e) {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", e.toString());
+					return modelMap;
+				}
+				// 空值判断
+				if (shopComment != null) {
+					try {
+						shopComment.setCommentReply(null);
+						//更新评论
+						ShopCommentExecution ae = shopCommentService.modifyShopComment(shopComment);
+						if (ae.getState() == ShopCommentStateEnum.SUCCESS.getState()) {
+							modelMap.put("success", true);
+						} else {
+							modelMap.put("success", false);
+							modelMap.put("errMsg", ae.getStateInfo());
+						}
+					} catch (Exception e) {
+						modelMap.put("success", false);
+						modelMap.put("errMsg", e.toString());
+						return modelMap;
+					}
+	
+				} else {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", "删除商家回复失败");
+				}
+			}
+			else {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", "空的查询信息");
+				return modelMap;
+			}
+			return modelMap;
+		}
 
 }
